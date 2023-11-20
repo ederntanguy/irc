@@ -14,8 +14,6 @@ int main() {
 	struct sockaddr_in address;
 	int opt = 1;
 	socklen_t addrlen = sizeof(address);
-	while (1)
-	{
 	// Creating socket file descriptor
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket failed");
@@ -58,8 +56,9 @@ int main() {
 	fds[1].fd = new_socket;
 	fds[1].events = POLLIN;
 	char buffer[1000] = {0};
+    while (1) {
 
-		int ret = poll(fds, 10, 50000000);
+		int ret = poll(fds, 2, -1);
 		if (ret > 0) {
 			if (fds[1].events & POLLIN) {
 				recv(fds[1].fd, buffer, 1000, 0);
@@ -67,11 +66,8 @@ int main() {
 				for (int i = 0; i < 1000; ++i) {
 					buffer[i] = 0;
 				}
-				std::cout << "test" << std::endl;
 			}
-			std::cout << "test1" << std::endl;
 		}
-		std::cout << "test2" << std::endl;
 	}
 	// closing the connected socket
 	close(new_socket);
