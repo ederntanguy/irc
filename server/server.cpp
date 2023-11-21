@@ -1,4 +1,4 @@
-#include "Server.h"
+#include "server.hpp"
 
 Server::Server(int port) {
     listenSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -40,6 +40,3 @@ void Server::run() {
 bool Server::acceptNewConnection() {
     //Accepte un user et la rajoute a la userMap
 }
-
-
-

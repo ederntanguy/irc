@@ -6,6 +6,6 @@ public:
     std::string nickname;
     std::string username;
     std::unordered_set<std::string> channels;
-	int	socketfd;
+	int	clientSocket;
 
 };

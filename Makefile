@@ -1,6 +1,6 @@
-NAME		=	fixed
+NAME		=	ft_irc
 
-SRCS		=	main.cpp
+SRCS		=	main.cpp server/handleCommands.cpp server/server.cpp
 
 OBJDIR_SRCS		=	obj
 

@@ -6,8 +6,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <iostream>
-#include "../user/user.h"
-#include "../channel/channel.h"
+#include "../user/user.hpp"
+#include "../channel/channel.hpp"
 
 class Server {
 public:
@@ -18,13 +18,15 @@ public:
 
 private:
     int listenSocket;
-    std::unordered_map<int, User> users;
-    std::unordered_map<std::string, Channel> channels;
+    std::map<int, User> users;
+    std::map<std::string, Channel> channels;
 
     bool acceptNewConnection();
     bool processIncomingData(int clientSocket);
     void closeConnection(int clientSocket);
 
+
+    bool sendResponse(int clientSocket, const std::string& message);
     bool handleCommand(int clientSocket, const std::string& command, const std::vector<std::string>& params);
 
     bool handleNickCommand(int clientSocket, const std::string& nickname);
