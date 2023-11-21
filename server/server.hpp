@@ -1,4 +1,4 @@
-#include <unordered_map>
+#include <map>
 #include <string>
 #include <vector>
 #include <sys/socket.h>
@@ -25,7 +25,6 @@ private:
     bool processIncomingData(int clientSocket);
     void closeConnection(int clientSocket);
 
-
     bool sendResponse(int clientSocket, const std::string& message);
     bool handleCommand(int clientSocket, const std::string& command, const std::vector<std::string>& params);
 
@@ -36,6 +35,7 @@ private:
 	bool handlePrivMsgCommand(int clientSocket, const std::string& recipient, const std::string& message);
 	bool handlePingCommand(int clientSocket, const std::string& server);
 	bool handlePongCommand(int clientSocket, const std::string& server);
+	bool handleListCommand(int clientSocket);
 	bool handleQuitCommand(int clientSocket);
 
     //void log(const std::string& message);

@@ -1,5 +1,5 @@
 #include <string>
-#include <unordered_set>
+#include <set>
 
 class Channel {
 public:
@@ -27,5 +27,5 @@ public:
 private:
     std::string channelName;
     std::string channelTopic;
-    std::unordered_set<int> users;
+    std::set<int> users;
 };

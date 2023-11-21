@@ -1,10 +1,13 @@
 NAME		=	ft_irc
 
-SRCS		=	main.cpp server/handleCommands.cpp server/server.cpp
+SRCS		=	main.cpp 
+
+SERVER		= 	handleCommands.cpp server.cpp
 
 OBJDIR_SRCS		=	obj
 
-OBJS		=	${addprefix ${OBJDIR_SRCS}/,${SRCS:.cpp=.o}}
+OBJS		=	${addprefix ${OBJDIR_SRCS}/,${SRCS:.cpp=.o}} \
+				${addprefix ${OBJDIR_SRCS}/,${SERVER:.cpp=.o}}
 
 CC			=	c++
 CFLAGS		=	-Wall -Werror -Wextra -std=c++98
@@ -14,13 +17,16 @@ RM			=	rm -f
 $(OBJDIR_SRCS)/%.o: %.cpp | $(OBJDIR_SRCS)
 				${CC} ${CFLAGS} -c $< -o $@
 
+$(OBJDIR_SRCS)/%.o: server/%.cpp | $(OBJDIR_SRCS)
+				${CC} ${CFLAGS} -c $< -o $@
+
 all:			${NAME}
 
 $(OBJDIR_SRCS):
 				mkdir -p $(OBJDIR_SRCS)
 
 ${NAME}:		${OBJS} Makefile
-				${CC} ${CFLAGS} -o ${NAME} ${OBJS}
+				${CC} ${CFLAGS} -o ${NAME} ${OBJS} ${OBJS2}
 clean:
 				rm -rf $(OBJS) $(OBJDIR_SRCS)
 fclean:			clean
