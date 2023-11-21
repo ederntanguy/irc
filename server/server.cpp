@@ -76,7 +76,7 @@ void Server::run() {
                     }
                 }
                 else if (fds[i].revents & POLLOUT && users[i].nickname != "" && users[i].username != "" && users[i].isInit == 0) {
-                    std::string welcomeMsg = ":irc 001 ONon :Welcome to the IRC Network, jtm\r\n";
+                    std::string welcomeMsg = ":irc 001 " + users[i].nickname + " :Welcome to the IRC Network, " + users[i].nickname + "\r\n";
                     send(fds[i].fd, welcomeMsg.c_str(), welcomeMsg.size(), MSG_CONFIRM);
                     users[i].isInit = 1;
                 }
