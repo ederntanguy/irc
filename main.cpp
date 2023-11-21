@@ -8,7 +8,7 @@
 #include <iostream>
 #include <vector>
 
-#define PORT 8081
+#define PORT 6697
 int main() {
 	int server_fd, new_socket;
 	struct sockaddr_in address;
@@ -51,21 +51,25 @@ int main() {
 	}
 	// terminator at the end
 	struct pollfd fds[100];
-	fds[0].fd = server_fd;
-	fds[0].events = POLLIN;
-	fds[1].fd = new_socket;
-	fds[1].events = POLLIN;
+	fds[0].fd = new_socket;
+	fds[0].events = POLLIN | POLLOUT;
 	char buffer[1000] = {0};
+	int b = 0;
     while (1) {
-
-		int ret = poll(fds, 2, -1);
+		int ret = poll(fds, 1, -1);
 		if (ret > 0) {
-			if (fds[1].events & POLLIN) {
-				recv(fds[1].fd, buffer, 1000, 0);
+			if (fds[0].revents & POLLIN) {
+				recv(fds[0].fd, buffer, 1000, 0);
 				std::cout << buffer << std::endl;
 				for (int i = 0; i < 1000; ++i) {
 					buffer[i] = 0;
 				}
+				b++;
+			}
+			else if (fds[0].revents & POLLOUT && b == 2) {
+				std::string welcomeMsg = ":irc 001 ONon :Welcome to the IRC Network, jtm\r\n";
+				send(fds[0].fd, welcomeMsg.c_str(), welcomeMsg.size(), MSG_CONFIRM);
+				b++;
 			}
 		}
 	}
