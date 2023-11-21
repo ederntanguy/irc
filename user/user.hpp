@@ -8,6 +8,10 @@
 class User {
 public:
 	User();
+    ~User();
+    void setNickName(std::string value);
+    void setUserName(std::string value);
+
 	std::string nickname;
 	std::string username;
 	std::set<std::string> channels;

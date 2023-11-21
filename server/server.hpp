@@ -12,7 +12,7 @@
 
 class Server {
 public:
-    Server(int port);
+    Server();
     ~Server();
 
     void run();
@@ -21,6 +21,8 @@ private:
     int listenSocket;
     std::vector<User> users;
     std::map<std::string, Channel> channels;
+    struct sockaddr_in address;
+    socklen_t addrlen;
 
     bool acceptNewConnection();
     bool processIncomingData(int clientSocket);
