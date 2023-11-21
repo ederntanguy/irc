@@ -8,6 +8,7 @@
 #include <iostream>
 #include "../user/user.hpp"
 #include "../channel/channel.hpp"
+#define PORT 6697
 
 class Server {
 public:
@@ -18,7 +19,7 @@ public:
 
 private:
     int listenSocket;
-    std::map<int, User> users;
+    std::vector<User> users;
     std::map<std::string, Channel> channels;
 
     bool acceptNewConnection();
