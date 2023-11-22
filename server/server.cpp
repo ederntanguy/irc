@@ -9,6 +9,7 @@
 
 Server::Server() {
 	int opt = 1;
+    numberUsersAdd = 0;
 	addrlen = sizeof(address);
 
 	if ((listenSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -33,43 +34,37 @@ Server::Server() {
 		perror("bind failed");
 		exit(EXIT_FAILURE);
 	}
-	if (listen(listenSocket, 20) < 0) {
+	if (listen(listenSocket, NUMBER_CLIENT_MAX) < 0) {
 		perror("listen");
 		exit(EXIT_FAILURE);
 	}
-
-    std::cout << fcntl(listenSocket, F_SETFL, O_NONBLOCK) << " " << listenSocket << std::endl;
+    fcntl(listenSocket, F_SETFL, O_NONBLOCK);
 }
 
 Server::~Server() {
 }
 
 void Server::run() {
-	int numberUsersAdd = 0;
-	struct pollfd fds[20];
     char buffer[1000] = {0};
-    int ret = 0;
+    int ret;
+    std::vector<struct pollfd> fds;
 
-	for (int i = 0; i < 20; ++i) {
-		fds[i].events = POLLOUT | POLLIN;
-        fds[i].fd = 0;
-	}
     while (1) {
-        fds[numberUsersAdd].fd = accept(listenSocket, (struct sockaddr*)&address, &addrlen);
-        if (fds[numberUsersAdd].fd > 0) {
-            User newOne;
-            newOne.clientSocket = fds[numberUsersAdd].fd;
-            users.push_back(newOne);
-            numberUsersAdd++;
-
-        }
+        acceptNewConnection(&fds);
         if (numberUsersAdd > 0) {
-            ret = poll(fds, numberUsersAdd, -1);
+            ret = poll(fds.data(), numberUsersAdd, -1);
             if (ret > 0) {
                 for (int i = 0; i < numberUsersAdd; ++i) {
-                    if (fds[i].revents & POLLIN) {
+                    if (fds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+                        close(fds[i].fd);
+                        fds[i].fd = 0;
+                    }
+                    else if (fds[i].revents & POLLIN) {
                         recv(fds[i].fd, buffer, 1000, 0);
-                        std::cout << buffer << std::endl;
+                        std::string test(buffer);
+                        std::cout << test << std::endl;
+//                        if (test.empty())
+//                            fds = handleQuitCommand(fds, i);
                         if (users[i].username == "")
                             users[i].setUserName(buffer);
                         if (users[i].nickname == "")
@@ -83,17 +78,28 @@ void Server::run() {
                         send(fds[i].fd, welcomeMsg.c_str(), welcomeMsg.size(), MSG_CONFIRM);
                         users[i].isInit = 1;
                     }
-                    else if (fds[i].revents & POLLREMOVE) {
-                        close(fds[i].fd);
-                        fds[i].fd = 0;
-                    }
                 }
             }
         }
 	}
 }
 
-bool Server::acceptNewConnection() {
-    //Accepte un user et la rajoute a la userMap
+bool Server::acceptNewConnection(std::vector<struct pollfd> *fds) {
+    int tmp = accept(listenSocket, (struct sockaddr*)&address, &addrlen);
+    if (tmp > 0) {
+        User newOne;
+        newOne.clientSocket = tmp;
+        users.push_back(newOne);
+        numberUsersAdd++;
+        struct pollfd tmp2;
+        tmp2.fd = tmp;
+        tmp2.events = POLLIN | POLLOUT;
+        fds->push_back(tmp2);
+    }
+
     return true;
+}
+
+void Server::closeConnection(std::vector<struct pollfd> *fds, int i) {
+    fds->erase(fds->begin()+i);
 }
