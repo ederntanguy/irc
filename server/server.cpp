@@ -34,7 +34,7 @@ Server::Server() {
 		perror("bind failed");
 		exit(EXIT_FAILURE);
 	}
-	if (listen(listenSocket, NUMBER_CLIENT_MAX) < 0) {
+	if (listen(listenSocket, 20) < 0) {
 		perror("listen");
 		exit(EXIT_FAILURE);
 	}
@@ -104,6 +104,7 @@ void Server::closeConnection(std::vector<struct pollfd> *fds, int i) {
     close((*fds)[i].fd);
     users.erase(itU);
     fds->erase(itF);
+    numberUsersAdd--;
 }
 
 bool Server::processIncomingData(const std::string& buffer, std::vector<struct pollfd> *fds, int i) {
