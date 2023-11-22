@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
 Server::Server() {
 	int opt = 1;
@@ -36,6 +37,8 @@ Server::Server() {
 		perror("listen");
 		exit(EXIT_FAILURE);
 	}
+
+    std::cout << fcntl(listenSocket, F_SETFL, O_NONBLOCK) << " " << listenSocket << std::endl;
 }
 
 Server::~Server() {
@@ -45,45 +48,46 @@ void Server::run() {
 	int numberUsersAdd = 0;
 	struct pollfd fds[20];
     char buffer[1000] = {0};
+    int ret = 0;
+
 	for (int i = 0; i < 20; ++i) {
 		fds[i].events = POLLOUT | POLLIN;
         fds[i].fd = 0;
 	}
-    if ((fds[numberUsersAdd].fd = accept(listenSocket, (struct sockaddr*)&address, &addrlen))
-        < 0) {
-        perror("accept");
-        exit(EXIT_FAILURE);
-    }
-    if (fds[numberUsersAdd].fd != 0) {
-        User newOne;
-        newOne.clientSocket = fds[numberUsersAdd].fd;
-        users.push_back(newOne);
-        numberUsersAdd++;
-    }
     while (1) {
-        int ret = poll(fds, numberUsersAdd, -1);
-        if (ret > 0) {
-            for (int i = 0; i < numberUsersAdd; ++i) {
-                if (fds[i].revents & POLLIN) {
-                    recv(fds[i].fd, buffer, 1000, 0);
-                    std::cout << buffer << std::endl;
-                    if (users[i].username == "")
-                        users[i].setUserName(buffer);
-                    if (users[i].nickname == "")
-                        users[i].setNickName(buffer);
-                    for (int i = 0; i < 1000; ++i) {
-                        buffer[i] = 0;
+        fds[numberUsersAdd].fd = accept(listenSocket, (struct sockaddr*)&address, &addrlen);
+        if (fds[numberUsersAdd].fd > 0) {
+            User newOne;
+            newOne.clientSocket = fds[numberUsersAdd].fd;
+            users.push_back(newOne);
+            numberUsersAdd++;
+
+        }
+        if (numberUsersAdd > 0) {
+            ret = poll(fds, numberUsersAdd, -1);
+            if (ret > 0) {
+                for (int i = 0; i < numberUsersAdd; ++i) {
+                    if (fds[i].revents & POLLIN) {
+                        recv(fds[i].fd, buffer, 1000, 0);
+                        std::cout << buffer << std::endl;
+                        if (users[i].username == "")
+                            users[i].setUserName(buffer);
+                        if (users[i].nickname == "")
+                            users[i].setNickName(buffer);
+                        for (int i = 0; i < 1000; ++i) {
+                            buffer[i] = 0;
+                        }
+                    }
+                    else if (fds[i].revents & POLLOUT && users[i].nickname != "" && users[i].username != "" && users[i].isInit == 0) {
+                        std::string welcomeMsg = ":irc 001 " + users[i].nickname + " :Welcome to the IRC Network, " + users[i].nickname + "\r\n";
+                        send(fds[i].fd, welcomeMsg.c_str(), welcomeMsg.size(), MSG_CONFIRM);
+                        users[i].isInit = 1;
+                    }
+                    else if (fds[i].revents & POLLREMOVE) {
+                        close(fds[i].fd);
+                        fds[i].fd = 0;
                     }
                 }
-                else if (fds[i].revents & POLLOUT && users[i].nickname != "" && users[i].username != "" && users[i].isInit == 0) {
-                    std::string welcomeMsg = ":irc 001 " + users[i].nickname + " :Welcome to the IRC Network, " + users[i].nickname + "\r\n";
-                    send(fds[i].fd, welcomeMsg.c_str(), welcomeMsg.size(), MSG_CONFIRM);
-                    users[i].isInit = 1;
-                }
-				else if (fds[i].revents & POLLREMOVE) {
-					close(fds[i].fd);
-					fds[i].fd = 0;
-				}
             }
         }
 	}
