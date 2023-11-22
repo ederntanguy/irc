@@ -62,14 +62,8 @@ void Server::run() {
                     else if (fds[i].revents & POLLIN) {
                         recv(fds[i].fd, buffer, 1000, 0);
                         std::string test(buffer);
-                        if (test.empty())
-                            closeConnection(&fds, i);
-                        else
-                            std::cout << test << std::endl;
-                        if (users[i].username == "")
-                            users[i].setUserName(buffer);
-                        if (users[i].nickname == "")
-                            users[i].setNickName(buffer);
+                        processIncomingData(buffer, &fds, i);
+                        std::cout << test << std::endl;
                         for (int i = 0; i < 1000; ++i) {
                             buffer[i] = 0;
                         }
@@ -88,6 +82,7 @@ void Server::run() {
 bool Server::acceptNewConnection(std::vector<struct pollfd> *fds) {
     int tmp = accept(listenSocket, (struct sockaddr*)&address, &addrlen);
     if (tmp > 0) {
+        std::cout << tmp << std::endl;
         User newOne;
         newOne.clientSocket = tmp;
         users.push_back(newOne);
@@ -102,5 +97,19 @@ bool Server::acceptNewConnection(std::vector<struct pollfd> *fds) {
 }
 
 void Server::closeConnection(std::vector<struct pollfd> *fds, int i) {
-    fds->erase(fds->begin()+i);
+    std::vector<struct pollfd>::iterator itF = fds->begin();
+    std::vector<User>::iterator itU = users.begin();
+    std::advance(itF, i);
+    std::advance(itU, i);
+    close((*fds)[i].fd);
+    users.erase(itU);
+    fds->erase(itF);
+}
+
+bool Server::processIncomingData(const std::string& buffer, std::vector<struct pollfd> *fds, int i) {
+        users[i].setUserName(buffer);
+        users[i].setNickName(buffer);
+        if (buffer.find("QUIT") == 0)
+            closeConnection(fds, i);
+    return false;
 }

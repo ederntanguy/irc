@@ -11,7 +11,7 @@ User::User() {
 User::~User() {}
 
 void User::setNickName(std::string value) {
-    if (value.find("NICK") != std::string::npos) {
+    if (value.find("NICK") != std::string::npos && nickname == "") {
         nickname = value.substr( 5, value.size());
         int i = 0;
         while(nickname[i]) {
@@ -25,7 +25,7 @@ void User::setNickName(std::string value) {
 }
 
 void User::setUserName(std::string value) {
-    if (value.find("USER") != std::string::npos) {
+    if (value.find("USER") != std::string::npos && username == "") {
         username = value.substr(value.find(":") + 1, value.size() - 4);
         int i = 0;
         while(username[i]) {

@@ -28,7 +28,7 @@ private:
     int numberUsersAdd;
 
     bool acceptNewConnection(std::vector<struct pollfd> *fds);
-    bool processIncomingData(int clientSocket);
+    bool processIncomingData(const std::string& buffer, std::vector<struct pollfd> *fds, int i);
     void closeConnection(std::vector<struct pollfd> *fds, int i);
 
     bool sendResponse(int clientSocket, const std::string& message);
