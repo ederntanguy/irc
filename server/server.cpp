@@ -62,9 +62,10 @@ void Server::run() {
                     else if (fds[i].revents & POLLIN) {
                         recv(fds[i].fd, buffer, 1000, 0);
                         std::string test(buffer);
-                        std::cout << test << std::endl;
-//                        if (test.empty())
-//                            fds = handleQuitCommand(fds, i);
+                        if (test.empty())
+                            closeConnection(&fds, i);
+                        else
+                            std::cout << test << std::endl;
                         if (users[i].username == "")
                             users[i].setUserName(buffer);
                         if (users[i].nickname == "")
