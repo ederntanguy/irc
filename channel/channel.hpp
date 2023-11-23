@@ -5,6 +5,18 @@ class Channel {
 public:
     Channel(const std::string& name) : channelName(name) {}
 
+    void addOperator(int userSocket) {
+        operators.insert(userSocket);
+    }
+
+    void removeOperator(int userSocket) {
+        operators.erase(userSocket);
+    }
+
+    bool isOperator(int userSocket) const {
+        return operators.find(userSocket) != operators.end();
+    }
+
     void setTopic(const std::string& topic) {
         channelTopic = topic;
     }
@@ -28,4 +40,6 @@ private:
     std::string channelName;
     std::string channelTopic;
     std::set<int> users;
+    std::set<int> operators;
+
 };
