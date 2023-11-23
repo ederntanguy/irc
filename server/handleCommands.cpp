@@ -1,8 +1,7 @@
 #include "server.hpp"
 
-bool Server::sendResponse(int hh, const std::string &h) {
-	(void)hh;
-	(void)h;
+bool Server::sendResponse(int clientSocket, const std::string &msg) {
+	send(clientSocket, msg.c_str(), msg.size(), 0);
 	return true;
 }
 
@@ -17,7 +16,7 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
         }
     } else if (command == "JOIN") {
         if (params.size() >= 1) {
-            return handleJoinCommand(clientSocket, params[0]);
+            return handleJoinCommand(clientSocket, ":" + params[0] + " JOIN :" + params[1].substr(params[1].find(' ') + 1, params[1].size()));
         }
     } else if (command == "PART") {
         if (params.size() >= 1) {

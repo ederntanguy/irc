@@ -10,7 +10,7 @@ User::User() {
 
 User::~User() {}
 
-void User::setNickName(std::string value) {
+bool User::setNickName(std::string value) {
     if (value.find("NICK") != std::string::npos && nickname == "") {
         nickname = value.substr( 5, value.size());
         int i = 0;
@@ -21,10 +21,12 @@ void User::setNickName(std::string value) {
             i++;
         }
         nickname = nickname.substr(0, i);
+	    return true;
     }
+	return false;
 }
 
-void User::setUserName(std::string value) {
+bool User::setUserName(std::string value) {
     if (value.find("USER") != std::string::npos && username == "") {
         username = value.substr(value.find(":") + 1, value.size() - 4);
         int i = 0;
@@ -35,5 +37,7 @@ void User::setUserName(std::string value) {
             i++;
         }
         username = username.substr(0, i);
-    }
+	    return true;
+	}
+	return false;
 }

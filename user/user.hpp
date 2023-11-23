@@ -9,8 +9,8 @@ class User {
 public:
 	User();
     ~User();
-    void setNickName(std::string value);
-    void setUserName(std::string value);
+    bool setNickName(std::string value);
+    bool setUserName(std::string value);
 
 	std::string nickname;
 	std::string username;
