@@ -2,7 +2,7 @@ NAME		=	ft_irc
 
 SRCS		=	main.cpp 
 
-SERVER		= 	server.cpp
+SERVER		= 	server.cpp handleCommands.cpp
 
 USER		=	user.cpp
 

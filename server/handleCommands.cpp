@@ -27,7 +27,7 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
         }
     } else if (command == "PONG") {
         if (params.size() >= 1) {
-            return handlePongCommand(clientSocket, params[0]);
+            return handlePongCommand();
         }
     } else if (command == "LIST") {
         return handleListCommand(clientSocket);
@@ -54,12 +54,11 @@ bool Server::handleNickCommand(int clientSocket, const std::string& nickname) {
     return false;
 }
 
-
-bool Server::handleUserCommand(int clientSocket, const std::string& username, const std::string& realname) {
+bool Server::handleUserCommand(int clientSocket, const std::string& username, const std::string& nickname) {
     for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
         if (it->clientSocket == clientSocket) {
             it->username = username;
-            it->realname = realname;
+            it->nickname = nickname;
             sendResponse(clientSocket, "Welcome " + username + "! Your name is set.\r\n");
             return true;
         }
@@ -68,36 +67,28 @@ bool Server::handleUserCommand(int clientSocket, const std::string& username, co
     return false;
 }
 
-
 bool Server::handlePartCommand(int clientSocket, const std::string& channelName) {
-    for (std::vector<User>::iterator userIt = users.begin(); userIt != users.end(); ++userIt) {
-        if (userIt->clientSocket == clientSocket) {
-            if (userIt->currentChannel != channelName) {
-                sendResponse(clientSocket, "ERROR: Not in the specified channel.\r\n");
-                return false;
-            }
-            std::map<std::string, Channel>::iterator channelIt = channels.find(channelName);
-            if (channelIt == channels.end()) {
-                sendResponse(clientSocket, "ERROR: Channel not found.\r\n");
-                return false;
-            }
-            channelIt->second.removeUser(clientSocket);
-            userIt->currentChannel.clear();
-            sendResponse(clientSocket, "Left channel: " + channelName + "\r\n");
-            return true;
-        }
+    std::map<std::string, Channel>::iterator channelIt = channels.find(channelName);
+    if (channelIt == channels.end()) {
+        sendResponse(clientSocket, "ERROR: Channel not found.\r\n");
+        return false;
     }
-    sendResponse(clientSocket, "ERROR: User not found.\r\n");
-    return false;
+    if (!channelIt->second.isUserInChannel(clientSocket)) {
+        sendResponse(clientSocket, "ERROR: Not in the specified channel.\r\n");
+        return false;
+    }
+    channelIt->second.removeUser(clientSocket);
+    sendResponse(clientSocket, "Left channel: " + channelName + "\r\n");
+    return true;
 }
-
 
 
 bool Server::handlePrivMsgCommand(int clientSocket, const std::string& recipient, const std::string& message) {
     std::map<std::string, Channel>::iterator channelIt = channels.find(recipient);
     if (channelIt != channels.end()) {
         const std::set<int>& usersInChannel = channelIt->second.getUsers();
-        for (int userSocket : usersInChannel) {
+        for (std::set<int>::const_iterator userIt = usersInChannel.begin(); userIt != usersInChannel.end(); ++userIt) {
+            int userSocket = *userIt;
             if (userSocket != clientSocket) {
                 sendResponse(userSocket, message);
             }
@@ -114,15 +105,13 @@ bool Server::handlePrivMsgCommand(int clientSocket, const std::string& recipient
     return false;
 }
 
-
-
 bool Server::handlePingCommand(int clientSocket, const std::string& server) {
     std::string pongResponse = "PONG :" + server + "\r\n";
     sendResponse(clientSocket, pongResponse);
     return true;
 }
 
-bool Server::handlePongCommand(int clientSocket, const std::string& server) {
+bool Server::handlePongCommand() {
     return true;
 }
 
