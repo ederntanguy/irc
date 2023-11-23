@@ -16,7 +16,7 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
         }
     } else if (command == "JOIN") {
         if (params.size() >= 1) {
-            return handleJoinCommand(clientSocket, ":" + params[0] + " JOIN :" + params[1].substr(params[1].find(' ') + 1, params[1].size()));
+            return handleJoinCommand(clientSocket, params);
         }
     } else if (command == "PART") {
         if (params.size() >= 1) {
@@ -129,8 +129,11 @@ bool Server::handleListCommand(int clientSocket) {
     return true;
 }
 
-bool Server::handleJoinCommand(int clientSocket, const std::string &channelName) {
-	(void)clientSocket;
-	(void)channelName;
-	return false;
+bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> &params) {
+    int tmp = params[1].find(' ');
+    if (params[1].find(' ', tmp + 1) > params[1].size()) {
+        return sendResponse(clientSocket, ":" + params[0] + " JOIN :" + params[1].substr(tmp + 1, params[1].size()));
+    }
+    else
+        return sendResponse(clientSocket, ":" + params[0] + " JOIN :" + params[1].substr(tmp + 1, params[1].find(' ', tmp + 1)));
 }

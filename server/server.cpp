@@ -117,7 +117,8 @@ bool Server::processIncomingData(const std::string& buffer, std::vector<struct p
 		return true;
 	}
 	std::vector<std::string> params;
-	params.push_back(users[i].nickname);
+    if (users[i].nickname != "")
+	    params.push_back(users[i].nickname);
 	params.push_back(buffer);
 	handleCommand(users[i].clientSocket, buffer.substr(0, buffer.find(' ')), params);
 	return true;
