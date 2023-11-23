@@ -41,5 +41,10 @@ private:
     std::string channelTopic;
     std::set<int> users;
     std::set<int> operators;
+    std::set<int> invited;
 
+    std::string channelKey = "";
+    bool        isInviteOnly = false;
+    bool        isTopicSecured = true;
+    int         userNumberLimit = 500;
 };
