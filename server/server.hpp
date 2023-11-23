@@ -9,21 +9,27 @@
 #include "../user/user.hpp"
 #include "../channel/channel.hpp"
 
+#define PORT 6697
+#define NUMBER_CLIENT_MAX 20
+
 class Server {
 public:
-    Server(int port);
+    Server();
     ~Server();
 
     void run();
 
 private:
     int listenSocket;
-    std::map<int, User> users;
+    std::vector<User> users;
     std::map<std::string, Channel> channels;
+    struct sockaddr_in address;
+    socklen_t addrlen;
+    int numberUsersAdd;
 
-    bool acceptNewConnection();
-    bool processIncomingData(int clientSocket);
-    void closeConnection(int clientSocket);
+    bool acceptNewConnection(std::vector<struct pollfd> *fds);
+    bool processIncomingData(const std::string& buffer, std::vector<struct pollfd> *fds, int i);
+    void closeConnection(std::vector<struct pollfd> *fds, int i);
 
     bool sendResponse(int clientSocket, const std::string& message);
     bool handleCommand(int clientSocket, const std::string& command, const std::vector<std::string>& params);
@@ -36,7 +42,6 @@ private:
 	bool handlePingCommand(int clientSocket, const std::string& server);
 	bool handlePongCommand(int clientSocket, const std::string& server);
 	bool handleListCommand(int clientSocket);
-	bool handleQuitCommand(int clientSocket);
 
     //void log(const std::string& message);
 };
