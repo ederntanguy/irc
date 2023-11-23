@@ -41,7 +41,7 @@ private:
 	bool handlePrivMsgCommand(int clientSocket, const std::string& recipient, const std::string& message);
 	bool handlePingCommand(int clientSocket, const std::string& server);
 	bool handlePongCommand(int clientSocket, const std::string& server);
-	bool handleListCommand(int clientSocket);
+	bool handleListCommand(int clientSocket, const std::string& server);
 
     //void log(const std::string& message);
 };
