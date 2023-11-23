@@ -5,6 +5,6 @@ class User {
 public:
     std::string nickname;
     std::string username;
-    std::set<std::string> channels;
+    std::string currentChannel;
     int clientSocket;
 };

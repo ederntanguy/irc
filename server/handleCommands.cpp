@@ -71,26 +71,46 @@ bool Server::handleUserCommand(int clientSocket, const std::string& username, co
     return false;
 }
 
-bool Server::handleJoinCommand(int clientSocket, const std::string& channelName) {
-    std::map<std::string, Channel>::iterator channelIt = channels.find(channelName);
-    if (channelIt == channels.end()) {
-        Channel newChannel(channelName);
-        channels.insert(std::make_pair(channelName, newChannel));
-        channelIt = channels.find(channelName);
-    }
-    bool added = channelIt->second.addUser(clientSocket);
-    if (added) {
-        std::map<int, User>::iterator userIt = users.find(clientSocket);
-        if (userIt != users.end()) {
-            userIt->second.channels.insert(channelName);
-            sendResponse(clientSocket, "Joined channel: " + channelName + "\r\n");
-            return true;
-        } else {
-            sendResponse(clientSocket, "ERROR: User not found.\r\n");
-            return false;
-        }
-    } else {
-        sendResponse(clientSocket, "ERROR: Could not join channel.\r\n");
+bool Server::handlePartCommand(int clientSocket, const std::string& channelName) {
+    std::map<int, User>::iterator userIt = users.find(clientSocket);
+    if (userIt == users.end() || userIt->second.currentChannel != channelName) {
+        sendResponse(clientSocket, "ERROR: Not in the specified channel.\r\n");
         return false;
     }
+    channels[channelName].removeUser(clientSocket);
+    userIt->second.currentChannel.clear();
+    sendResponse(clientSocket, "Left channel: " + channelName + "\r\n");
+
+    return true;
+}
+
+bool Server::handlePrivMsgCommand(int clientSocket, const std::string& recipient, const std::string& message) {
+    std::map<std::string, Channel>::iterator channelIt = channels.find(recipient);
+    if (channelIt != channels.end()) {
+        const std::set<int>& usersInChannel = channelIt->second.getUsers();
+        for (std::set<int>::const_iterator userIt = usersInChannel.begin(); userIt != usersInChannel.end(); ++userIt) {
+            if (*userIt != clientSocket) {
+                sendResponse(*userIt, message);
+            }
+        }
+        return true;
+    }
+    for (std::map<int, User>::iterator userIt = users.begin(); userIt != users.end(); ++userIt) {
+        if (userIt->second.nickname == recipient) {
+            sendResponse(userIt->first, message);
+            return true;
+        }
+    }
+    sendResponse(clientSocket, "ERROR: Recipient not found.\r\n");
+    return false;
+}
+
+bool Server::handlePingCommand(int clientSocket, const std::string& server) {
+    std::string pongResponse = "PONG :" + server + "\r\n";
+    sendResponse(clientSocket, pongResponse);
+    return true;
+}
+
+bool Server::handlePongCommand(int clientSocket, const std::string& server) {
+    return true;
 }
