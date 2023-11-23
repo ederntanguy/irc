@@ -113,8 +113,6 @@ bool Server::processIncomingData(const std::string& buffer, std::vector<struct p
 	if (buffer.find("QUIT") == 0)
 		closeConnection(fds, i);
 	std::vector<std::string> params;
-//	std::cout << buffer.substr(0, buffer.find(' ')) << " " << (buffer.substr(0, buffer.find(' ')) == "QUIT") << std::endl;
-//	handleCommand(users[i].clientSocket, buffer.substr(0, buffer.find(' ')), params);
-
-    return true;
+	handleCommand(users[i].clientSocket, buffer.substr(0, buffer.find(' ')), params);
+	return true;
 }

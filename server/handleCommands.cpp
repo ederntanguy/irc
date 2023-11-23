@@ -1,5 +1,11 @@
 #include "server.hpp"
 
+bool Server::sendResponse(int hh, const std::string &h) {
+	(void)hh;
+	(void)h;
+	return true;
+}
+
 bool Server::handleCommand(int clientSocket, const std::string& command, const std::vector<std::string>& params) {
     if (command == "NICK") {
         if (params.size() >= 1) {
@@ -122,4 +128,10 @@ bool Server::handleListCommand(int clientSocket) {
     }
     sendResponse(clientSocket, "End of channel list.\r\n");
     return true;
+}
+
+bool Server::handleJoinCommand(int clientSocket, const std::string &channelName) {
+	(void)clientSocket;
+	(void)channelName;
+	return false;
 }
