@@ -35,11 +35,17 @@ public:
 
     const std::string& getName() const { return channelName; }
     const std::string& getTopic() const { return channelTopic; }
+    const std::set<int>& getUsers() const { return users; }
 
 private:
     std::string channelName;
     std::string channelTopic;
     std::set<int> users;
     std::set<int> operators;
+    std::set<int> invited;
 
+    std::string channelKey;
+    bool        isInviteOnly;
+    bool        isTopicSecured;
+    int         userNumberLimit;
 };

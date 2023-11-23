@@ -40,7 +40,7 @@ private:
     bool handlePartCommand(int clientSocket, const std::string& channelName);
 	bool handlePrivMsgCommand(int clientSocket, const std::string& recipient, const std::string& message);
 	bool handlePingCommand(int clientSocket, const std::string& server);
-	bool handlePongCommand(int clientSocket, const std::string& server);
+	bool handlePongCommand();
 	bool handleListCommand(int clientSocket);
 
     //void log(const std::string& message);
