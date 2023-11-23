@@ -107,21 +107,14 @@ void Server::closeConnection(std::vector<struct pollfd> *fds, int i) {
     numberUsersAdd--;
 }
 
-bool Server::handleListCommand(int clientSocket, const std::string &server) {
-		std::cout << "lola" << std::endl;
-		std::string lolo = ":NomDuServeur 322 <VotreNick> <NomDuCanal> <NombreUtilisateurs> :<SujetDuCanal>";
-		send(clientSocket, lolo.c_str(), lolo.size(), MSG_CONFIRM);
-	return true;
-}
-
 bool Server::processIncomingData(const std::string& buffer, std::vector<struct pollfd> *fds, int i) {
 	users[i].setUserName(buffer);
 	users[i].setNickName(buffer);
 	if (buffer.find("QUIT") == 0)
 		closeConnection(fds, i);
-	if (buffer.find("LIST") == 0) {
-		handleListCommand((*fds)[i].fd, "fdsf");
-	}
+	std::vector<std::string> params;
+//	std::cout << buffer.substr(0, buffer.find(' ')) << " " << (buffer.substr(0, buffer.find(' ')) == "QUIT") << std::endl;
+//	handleCommand(users[i].clientSocket, buffer.substr(0, buffer.find(' ')), params);
 
     return true;
 }
