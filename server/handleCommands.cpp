@@ -20,7 +20,7 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
         }
     } else if (command == "PART") {
         if (params.size() >= 1) {
-            return handlePartCommand(clientSocket, params[0]);
+            return handlePartCommand(clientSocket, params);
         }
     } else if (command == "PRIVMSG") {
         if (params.size() >= 2) {
@@ -72,19 +72,49 @@ bool Server::handleUserCommand(int clientSocket, const std::string& username, co
     return false;
 }
 
-bool Server::handlePartCommand(int clientSocket, const std::string& channelName) {
-    std::map<std::string, Channel>::iterator channelIt = channels.find(channelName);
-    if (channelIt == channels.end()) {
-        sendResponse(clientSocket, "ERROR: Channel not found.\r\n");
-        return false;
-    }
-    if (!channelIt->second.isUserInChannel(clientSocket)) {
-        sendResponse(clientSocket, "ERROR: Not in the specified channel.\r\n");
-        return false;
-    }
-    channelIt->second.removeUser(clientSocket);
-    sendResponse(clientSocket, "Left channel: " + channelName + "\r\n");
-    return true;
+bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>& params) {
+	size_t tmp = params[1].find(' ') + 1;
+	size_t res1, res2;
+	std::vector<std::string> channelNames;
+	while (params[1].size() > tmp) {
+		res1 = params[1].find(',', tmp);
+		res2 = params[1].find(' ', tmp);
+		if (res1 < res2) {
+			channelNames.push_back(params[1].substr(tmp, res1 - tmp));
+			tmp = res1 + 1;
+		} else if (res1 > res2) {
+			channelNames.push_back(params[1].substr(tmp, res2 - tmp));
+			tmp = res2 + 1;
+		} else if (res1 >= params[1].size()) {
+			channelNames.push_back(params[1].substr(tmp, res1 - tmp - 1));
+			tmp = params[1].size();
+		} else {
+			std::cerr << "wow trop bizarre la" << std::endl;
+			return false;
+		}
+	}
+	for (size_t i = 0; i < channelNames.size(); ++i) {
+		std::cout << channelNames[i] << std::endl;
+	}
+	for (size_t i = 0; i < channelNames.size(); ++i) {
+		if (channelNames[i][0] != '#' && channelNames[i][0] != '&') {
+			sendResponse(clientSocket, "ERROR: " + channelNames[i] + " can't be a channel");
+			return false;
+		}
+//		std::map<std::string, Channel>::iterator channelIt = channels.find(channelNames[i]);
+//		if (channelIt == channels.end()) {
+//			sendResponse(clientSocket, "ERROR: Channel not found.\r\n");
+//			return false;
+//		}
+//		if (!channelIt->second.isUserInChannel(clientSocket)) {
+//			sendResponse(clientSocket, "ERROR: Not in the specified channel.\r\n");
+//			return false;
+//		}
+//		channelIt->second.removeUser(clientSocket);
+		std::cout << ":" + params[0] + " PART :" + channelNames[i] << std::endl;
+		sendResponse(clientSocket, ":" + params[0] + " PART :" + channelNames[i]);
+	}
+	return true;
 }
 
 
@@ -130,10 +160,40 @@ bool Server::handleListCommand(int clientSocket) {
 }
 
 bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> &params) {
-    int tmp = params[1].find(' ');
-    if (params[1].find(' ', tmp + 1) > params[1].size()) {
-        return sendResponse(clientSocket, ":" + params[0] + " JOIN :" + params[1].substr(tmp + 1, params[1].size()));
-    }
-    else
-        return sendResponse(clientSocket, ":" + params[0] + " JOIN :" + params[1].substr(tmp + 1, params[1].find(' ', tmp + 1)));
+	size_t tmp = params[1].find(' ') + 1;
+	size_t res1, res2;
+	std::vector<std::string> channelNames;
+	while (params[1].size() > tmp) {
+		res1 = params[1].find(',', tmp);
+		res2 = params[1].find(' ', tmp);
+		if (res1 < res2) {
+			channelNames.push_back(params[1].substr(tmp, res1 - tmp));
+			tmp = res1 + 1;
+		} else if (res1 > res2) {
+			channelNames.push_back(params[1].substr(tmp, res2 - tmp));
+			tmp = res2 + 1;
+		} else if (res1 >= params[1].size()) {
+			channelNames.push_back(params[1].substr(tmp, res1 - tmp - 1));
+			tmp = params[1].size();
+		} else {
+			std::cerr << "wow trop bizarre la" << std::endl;
+			return false;
+		}
+	}
+	for (size_t i = 0; i < channelNames.size(); ++i) {
+		std::cout << channelNames[i] << " hihi" << std::endl;
+	}
+	for (size_t i = 0; i < channelNames.size(); ++i) {
+		if (channelNames[i][0] != '#' && channelNames[i][0] != '&') {
+			sendResponse(clientSocket, "ERROR: " + channelNames[i] + " can't be a channel");
+			return false;
+		}
+//		if (!channelIt->second.isUserInChannel(clientSocket)) {
+//			sendResponse(clientSocket, "ERROR: Not in the specified channel.\r\n");
+//			return false;
+//		}
+//		channelIt->second.removeUser(clientSocket);
+		sendResponse(clientSocket, ":" + params[0] + " JOIN :" + channelNames[i]);
+	}
+	return true;
 }

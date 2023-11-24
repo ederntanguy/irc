@@ -82,7 +82,6 @@ void Server::run() {
 bool Server::acceptNewConnection(std::vector<struct pollfd> *fds) {
     int tmp = accept(listenSocket, (struct sockaddr*)&address, &addrlen);
     if (tmp > 0) {
-        std::cout << tmp << std::endl;
         User newOne;
         newOne.clientSocket = tmp;
         users.push_back(newOne);
@@ -116,9 +115,10 @@ bool Server::processIncomingData(const std::string& buffer, std::vector<struct p
 		closeConnection(fds, i);
 		return true;
 	}
+	else if (buffer.find("CAP LS 302") == 0)
+		return true;
 	std::vector<std::string> params;
-    if (users[i].nickname != "")
-	    params.push_back(users[i].nickname);
+	params.push_back(users[i].nickname);
 	params.push_back(buffer);
 	handleCommand(users[i].clientSocket, buffer.substr(0, buffer.find(' ')), params);
 	return true;
