@@ -1,6 +1,7 @@
 #include "server.hpp"
 
 bool Server::sendResponse(int clientSocket, std::string msg) {
+	msg.push_back('\r');
 	msg.push_back('\n');
 	send(clientSocket, msg.c_str(), msg.size(), 0);
 	return true;
@@ -45,18 +46,18 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
 bool Server::handleNickCommand(int clientSocket, const std::string& nickname) {
     for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
         if (it->nickname == nickname) {
-            sendResponse(clientSocket, "ERROR: Nickname is already in use.\r\n");
+            sendResponse(clientSocket, "ERROR: Nickname is already in use.");
             return false;
         }
     }
     for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
         if (it->clientSocket == clientSocket) {
             it->nickname = nickname;
-            sendResponse(clientSocket, "NICK command successful.\r\n");
+            sendResponse(clientSocket, "NICK command successful.");
             return true;
         }
     }
-    sendResponse(clientSocket, "ERROR: User not found.\r\n");
+    sendResponse(clientSocket, "ERROR: User not found.");
     return false;
 }
 
@@ -65,11 +66,11 @@ bool Server::handleUserCommand(int clientSocket, const std::string& username, co
         if (it->clientSocket == clientSocket) {
             it->username = username;
             it->nickname = nickname;
-            sendResponse(clientSocket, "Welcome " + username + "! Your name is set.\r\n");
+            sendResponse(clientSocket, "Welcome " + username + "! Your name is set.");
             return true;
         }
     }
-    sendResponse(clientSocket, "ERROR: User not found.\r\n");
+    sendResponse(clientSocket, "ERROR: User not found.");
     return false;
 }
 
@@ -133,13 +134,18 @@ bool Server::handlePrivMsgCommand(int clientSocket, const std::string& recipient
             return true;
         }
     }
-    sendResponse(clientSocket, "ERROR: Recipient not found.\r\n");
+    sendResponse(clientSocket, "ERROR: Recipient not found.");
     return false;
 }
 
 bool Server::handlePingCommand(int clientSocket, const std::string& server) {
-    std::string pongResponse = "PONG :" + server + "\r\n";
-    sendResponse(clientSocket, pongResponse);
+	std::string pongResponse;
+	std::cout << server << std::endl;
+	if (server != "localhost")
+		pongResponse = "PONG :" + server;
+    else
+		pongResponse = "PONG :irc";
+	sendResponse(clientSocket, pongResponse);
     return true;
 }
 
@@ -149,10 +155,10 @@ bool Server::handlePongCommand() {
 
 bool Server::handleListCommand(int clientSocket) {
     for (std::map<std::string, Channel>::iterator it = channels.begin(); it != channels.end(); ++it) {
-        std::string channelInfo = "Channel: " + it->first + "\n Topic: " + it->second.getTopic() + "\r\n";
+        std::string channelInfo = "Channel: " + it->first + "\n Topic: " + it->second.getTopic();
         sendResponse(clientSocket, channelInfo);
     }
-    sendResponse(clientSocket, "End of channel list.\r\n");
+    sendResponse(clientSocket, "End of channel list.");
     return true;
 }
 
