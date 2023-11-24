@@ -1,6 +1,7 @@
 #include "server.hpp"
 
-bool Server::sendResponse(int clientSocket, const std::string &msg) {
+bool Server::sendResponse(int clientSocket, std::string msg) {
+	msg.push_back('\n');
 	send(clientSocket, msg.c_str(), msg.size(), 0);
 	return true;
 }
@@ -94,9 +95,6 @@ bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>&
 		}
 	}
 	for (size_t i = 0; i < channelNames.size(); ++i) {
-		std::cout << channelNames[i] << std::endl;
-	}
-	for (size_t i = 0; i < channelNames.size(); ++i) {
 		if (channelNames[i][0] != '#' && channelNames[i][0] != '&') {
 			sendResponse(clientSocket, "ERROR: " + channelNames[i] + " can't be a channel");
 			return false;
@@ -111,7 +109,6 @@ bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>&
 //			return false;
 //		}
 //		channelIt->second.removeUser(clientSocket);
-		std::cout << ":" + params[0] + " PART :" + channelNames[i] << std::endl;
 		sendResponse(clientSocket, ":" + params[0] + " PART :" + channelNames[i]);
 	}
 	return true;
@@ -179,9 +176,6 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
 			std::cerr << "wow trop bizarre la" << std::endl;
 			return false;
 		}
-	}
-	for (size_t i = 0; i < channelNames.size(); ++i) {
-		std::cout << channelNames[i] << " hihi" << std::endl;
 	}
 	for (size_t i = 0; i < channelNames.size(); ++i) {
 		if (channelNames[i][0] != '#' && channelNames[i][0] != '&') {

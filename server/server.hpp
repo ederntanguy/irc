@@ -31,7 +31,7 @@ private:
     bool processIncomingData(const std::string& buffer, std::vector<struct pollfd> *fds, int i);
     void closeConnection(std::vector<struct pollfd> *fds, int i);
 
-    bool sendResponse(int clientSocket, const std::string& message);
+    bool sendResponse(int clientSocket, std::string message);
     bool handleCommand(int clientSocket, const std::string& command, const std::vector<std::string>& params);
 
     bool handleNickCommand(int clientSocket, const std::string& nickname);
