@@ -123,3 +123,27 @@ bool Server::handleListCommand(int clientSocket) {
     sendResponse(clientSocket, "End of channel list.\r\n");
     return true;
 }
+
+bool Server::handleJoinCommand(int clientSocket, const std::string& channelName) {
+    std::map<std::string, Channel>::iterator channelIt = channels.find(channelName);
+    if (channelIt == channels.end()) {
+        Channel newChannel(channelName);
+        channels[channelName] = newChannel;
+        channelIt = channels.find(channelName);
+    }
+    // Vérifier si c'est invite-only
+    bool added = channelIt->second.addUser(clientSocket);
+    if (added) {
+        for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
+            if (it->clientSocket == clientSocket) {
+                it->channels.insert(channelName);
+                break;
+            }
+        }
+        sendResponse(clientSocket, "Joined channel: " + channelName + "\r\n");
+        return true;
+    } else {
+        sendResponse(clientSocket, "ERROR: Could not join channel.\r\n");
+        return false;
+    }
+}

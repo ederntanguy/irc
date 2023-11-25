@@ -5,6 +5,22 @@ class Channel {
 public:
     Channel(const std::string& name) : channelName(name) {}
 
+    void setInviteOnly(bool value) {
+        isInviteOnly = value;
+    }
+
+    bool getInviteOnly() const {
+        return isInviteOnly;
+    }
+
+    void addInvitedUser(int userSocket) {
+        invited.insert(userSocket);
+    }
+
+    bool isUserInvited(int userSocket) const {
+        return invited.find(userSocket) != invited.end();
+    }
+    
     void addOperator(int userSocket) {
         operators.insert(userSocket);
     }

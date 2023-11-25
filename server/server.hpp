@@ -22,7 +22,7 @@ public:
 private:
     int listenSocket;
     std::vector<User> users;
-    std::map<std::string, Channel> channels;
+    std::vector<Channel> channels;
     struct sockaddr_in address;
     socklen_t addrlen;
     int numberUsersAdd;
