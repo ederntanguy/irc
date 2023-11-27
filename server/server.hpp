@@ -39,7 +39,7 @@ private:
     bool handleUserCommand(int clientSocket, const std::string& username, const std::string& realname);
     bool handleJoinCommand(int clientSocket, const std::vector<std::string> &params);
     bool handlePartCommand(int clientSocket, const std::vector<std::string>& params);
-	bool handlePrivMsgCommand(int clientSocket, const std::string& recipient, const std::string& message);
+	bool handlePrivMsgCommand(int clientSocket, const std::string &owner, const std::string& recipient, const std::string& message);
 	bool handlePingCommand(int clientSocket, const std::string& server);
 	bool handlePongCommand();
 	bool handleListCommand(int clientSocket);

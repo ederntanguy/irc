@@ -26,7 +26,9 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
         }
     } else if (command == "PRIVMSG") {
         if (params.size() >= 2) {
-            return handlePrivMsgCommand(clientSocket, params[0], params[1]);
+            return handlePrivMsgCommand(clientSocket,
+										params[0], params[1].substr(params[1].find(' ') + 1, params[1].find(' ', params[1].find(' ') + 1) - (params[1].find(' ') + 1)),
+										params[1]);
         }
     } else if (command == "PING") {
         if (params.size() >= 1) {
@@ -50,7 +52,7 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
 bool Server::handleNickCommand(int clientSocket, const std::string& nickname) {
     for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
         if (it->nickname == nickname) {
-            sendResponse(clientSocket, "ERROR: Nickname is already in use.");
+            sendResponse(clientSocket, ":irc ERROR Nickname is already in use.");
             return false;
         }
     }
@@ -61,7 +63,7 @@ bool Server::handleNickCommand(int clientSocket, const std::string& nickname) {
             return true;
         }
     }
-    sendResponse(clientSocket, "ERROR: User not found.");
+    sendResponse(clientSocket, ":irc ERROR User not found.");
     return false;
 }
 
@@ -74,7 +76,7 @@ bool Server::handleUserCommand(int clientSocket, const std::string& username, co
             return true;
         }
     }
-    sendResponse(clientSocket, "ERROR: User not found.");
+    sendResponse(clientSocket, ":irc ERROR User not found.");
     return false;
 }
 
@@ -101,16 +103,16 @@ bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>&
 	}
 	for (size_t i = 0; i < channelNames.size(); ++i) {
 		if (channelNames[i][0] != '#' && channelNames[i][0] != '&') {
-			sendResponse(clientSocket, "ERROR: " + channelNames[i] + " can't be a channel");
+			sendResponse(clientSocket, ":irc ERROR " + channelNames[i] + " can't be a channel");
 			return false;
 		}
 //		std::map<std::string, Channel>::iterator channelIt = channels.find(channelNames[i]);
 //		if (channelIt == channels.end()) {
-//			sendResponse(clientSocket, "ERROR: Channel not found.\r\n");
+//			sendResponse(clientSocket, ":irc ERROR Channel not found.\r\n");
 //			return false;
 //		}
 //		if (!channelIt->second.isUserInChannel(clientSocket)) {
-//			sendResponse(clientSocket, "ERROR: Not in the specified channel.\r\n");
+//			sendResponse(clientSocket, ":irc ERROR Not in the specified channel.\r\n");
 //			return false;
 //		}
 //		channelIt->second.removeUser(clientSocket);
@@ -120,36 +122,38 @@ bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>&
 }
 
 
-bool Server::handlePrivMsgCommand(int clientSocket, const std::string& recipient, const std::string& message) {
-    for (std::vector<Channel>::iterator it = channels.begin(); it != channels.end(); ++it) {
-        if (it->getName() == recipient) {
-            const std::set<int>& usersInChannel = it->getUsers();
-            for (std::set<int>::const_iterator userIt = usersInChannel.begin(); userIt != usersInChannel.end(); ++userIt) {
-                int userSocket = *userIt;
-                if (userSocket != clientSocket) {
-                    sendResponse(userSocket, message);
-                }
-            }
-            return true;
-        }
-    }
-    for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
-        if (it->nickname == recipient) {
-            sendResponse(it->clientSocket, message);
-            return true;
-        }
-    }
-    sendResponse(clientSocket, "ERROR: Recipient not found.");
+bool Server::handlePrivMsgCommand(int clientSocket, const std::string &owner, const std::string& recipient, const std::string& message) {
+	if (recipient[0] == '#') {
+		for (std::vector<Channel>::iterator it = channels.begin(); it != channels.end(); ++it) {
+			if (it->getName() == recipient) {
+				const std::set<int>& usersInChannel = it->getUsers();
+				for (std::set<int>::const_iterator userIt = usersInChannel.begin(); userIt != usersInChannel.end(); ++userIt) {
+					int userSocket = *userIt;
+					if (userSocket != clientSocket) {
+						sendResponse(userSocket, ":" + owner + " " + message);
+					}
+				}
+				return true;
+			}
+		}
+	} else {
+		for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
+			if (it->nickname == recipient) {
+				sendResponse(it->clientSocket, ":" + owner + " " + message);
+				return true;
+			}
+		}
+	}
+    sendResponse(clientSocket, ":irc ERROR Recipient not found.");
     return false;
 }
 
 bool Server::handlePingCommand(int clientSocket, const std::string& server) {
 	std::string pongResponse;
-	std::cout << server << std::endl;
-	if (server != "localhost")
-		pongResponse = "PONG :" + server;
-    else
+	if (server == "irc")
 		pongResponse = "PONG :irc";
+	else
+		pongResponse = "PONG " + server;
 	sendResponse(clientSocket, pongResponse);
     return true;
 }
@@ -163,7 +167,7 @@ bool Server::handleListCommand(int clientSocket) {
         std::string channelInfo = "Channel: " + it->getName() + "\n Topic: " + it->getTopic();
         sendResponse(clientSocket, channelInfo);
     }
-    sendResponse(clientSocket, "End of channel list.\r\n");
+    sendResponse(clientSocket, "End of channel list.");
     return true;
 }
 
@@ -199,22 +203,33 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
 		}
 	}
     for (size_t i = 0; i < channelNames.size(); ++i) {
+		if (channelNames[i][0] != '#' && channelNames[i][0] != '&') {
+			sendResponse(clientSocket, ":irc ERROR the channel name is not formated correctly ");
+			return false;
+		}
 		std::string tmpChalName = onlyAlphaNum(channelNames[i]);
         std::vector<Channel>::iterator channelIt = channels.begin();
         for (; channelIt != channels.end(); ++channelIt) {
             if (channelIt->getName() == tmpChalName) {
                 if (channelIt->getInviteOnly() && !channelIt->isUserInvited(clientSocket)) {
-                    sendResponse(clientSocket, "ERROR: " + tmpChalName + " is invite-only.");
+                    sendResponse(clientSocket, ":irc ERROR " + tmpChalName + " is invite-only.");
                     return false;
                 }
-                channelIt->addUser(clientSocket);
+				if (!channelIt->addUser(clientSocket)) {
+					sendResponse(clientSocket, ":irc ERROR can't add user to the channel");
+					return false;
+				}
                 sendResponse(clientSocket, ":" + params[0] + " JOIN :" + tmpChalName);
                 break;
             }
         }
         if (channelIt == channels.end()) {
 			channels.push_back(Channel(tmpChalName));
-            sendResponse(clientSocket, ":" + params[0] + " JOIN :" +tmpChalName);
+			if (!channels[channels.size() - 1].addUser(clientSocket)) {
+				sendResponse(clientSocket, ":irc ERROR can't add user to the channel");
+				return false;
+			}
+	        sendResponse(clientSocket, ":" + params[0] + " JOIN :" +tmpChalName);
             return false;
         }
     }
@@ -229,8 +244,6 @@ bool Server::handleModeCommand(int clientSocket, std::string& params) {
 	const std::string newModeParam = params.substr(0, params.find(' '));
 	std::vector<Channel>::iterator channelIt = channels.begin();
     for (; channelIt != channels.end(); ++channelIt) {
-	    std::cout << "/" << channelIt->getName() << "/" << std::endl;
-	    std::cout << "/" << channelName << "/" << std::endl;
 
         if (channelIt->getName() == channelName) {
             Channel& channel = *channelIt;
@@ -239,14 +252,12 @@ bool Server::handleModeCommand(int clientSocket, std::string& params) {
                 char mode = *it;
                 switch (mode) {
                     case '+':
-	                    std::cout << "/" << "test" << "/" << std::endl;
 		                settingMode = true;
                         break;
                     case '-':
                         settingMode = false;
                         break;
                     case 'i':
-	                    std::cout << "/" << "test" << "/" << std::endl;
 		                channel.setInviteOnly(settingMode);
                         break;
                     case 't':
@@ -280,16 +291,15 @@ bool Server::handleModeCommand(int clientSocket, std::string& params) {
                         }
                         break;
                     default:
-                        sendResponse(clientSocket, "ERROR: Unknown mode.");
+                        sendResponse(clientSocket, ":irc ERROR Unknown mode.");
                         return false;
                 }
-	            std::cout << "/" << channel.getInviteOnly() << "/" << std::endl;
 			}
             sendResponse(clientSocket, "Mode set successfully.");
             return true;
         }
     }
-    sendResponse(clientSocket, "ERROR: Channel does not exist.");
+    sendResponse(clientSocket, ":irc ERROR Channel does not exist.");
     return false;
 }
 
