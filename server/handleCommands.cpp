@@ -36,8 +36,12 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
         if (params.size() >= 1) {
             return handlePongCommand();
         }
+    } else if (command == "MODE") {
+		std::string tmp = params[1].substr(params[1].find(' ') + 1, params[1].size());
+
+	    return handleModeCommand(clientSocket, tmp);
     } else if (command == "LIST") {
-        return handleListCommand(clientSocket);
+	    return handleListCommand(clientSocket);
     }
     std::cerr << "Unknown command or insufficient parameters." << std::endl;
     return false;
@@ -163,6 +167,15 @@ bool Server::handleListCommand(int clientSocket) {
     return true;
 }
 
+std::string onlyAlphaNum(const std::string &string) {
+	std::string ret;
+	int i = 0;
+	while (isprint(string[i]) != 0) {
+		ret.push_back(string[i]);
+		i++;
+	}
+	return ret;
+}
 
 bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> &params) {
 	size_t tmp = params[1].find(' ') + 1;
@@ -186,29 +199,39 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
 		}
 	}
     for (size_t i = 0; i < channelNames.size(); ++i) {
+		std::string tmpChalName = onlyAlphaNum(channelNames[i]);
         std::vector<Channel>::iterator channelIt = channels.begin();
         for (; channelIt != channels.end(); ++channelIt) {
-            if (channelIt->getName() == channelNames[i]) {
+            if (channelIt->getName() == tmpChalName) {
                 if (channelIt->getInviteOnly() && !channelIt->isUserInvited(clientSocket)) {
-                    sendResponse(clientSocket, "ERROR: " + channelNames[i] + " is invite-only.");
+                    sendResponse(clientSocket, "ERROR: " + tmpChalName + " is invite-only.");
                     return false;
                 }
                 channelIt->addUser(clientSocket);
-                sendResponse(clientSocket, ":" + params[0] + " JOIN :" + channelNames[i]);
+                sendResponse(clientSocket, ":" + params[0] + " JOIN :" + tmpChalName);
                 break;
             }
         }
         if (channelIt == channels.end()) {
-            sendResponse(clientSocket, "ERROR: Channel does not exist.");
+			channels.push_back(Channel(tmpChalName));
+            sendResponse(clientSocket, ":" + params[0] + " JOIN :" +tmpChalName);
             return false;
         }
     }
     return true;
 }
 
-bool Server::handleModeCommand(int clientSocket, const std::string& channelName, const std::string& modeParams, const std::string& newModeParam) {
-    std::vector<Channel>::iterator channelIt = channels.begin();
+bool Server::handleModeCommand(int clientSocket, std::string& params) {
+	const std::string channelName = params.substr(0, params.find(' '));
+	params = params.substr(params.find(' ') + 1, params.size());
+	const std::string modeParams = params.substr(0, params.find(' '));
+	params = params.substr(params.find(' ') + 1, params.size());
+	const std::string newModeParam = params.substr(0, params.find(' '));
+	std::vector<Channel>::iterator channelIt = channels.begin();
     for (; channelIt != channels.end(); ++channelIt) {
+	    std::cout << "/" << channelIt->getName() << "/" << std::endl;
+	    std::cout << "/" << channelName << "/" << std::endl;
+
         if (channelIt->getName() == channelName) {
             Channel& channel = *channelIt;
             bool settingMode = true;
@@ -216,13 +239,15 @@ bool Server::handleModeCommand(int clientSocket, const std::string& channelName,
                 char mode = *it;
                 switch (mode) {
                     case '+':
-                        settingMode = true;
+	                    std::cout << "/" << "test" << "/" << std::endl;
+		                settingMode = true;
                         break;
                     case '-':
                         settingMode = false;
                         break;
                     case 'i':
-                        channel.setInviteOnly(settingMode);
+	                    std::cout << "/" << "test" << "/" << std::endl;
+		                channel.setInviteOnly(settingMode);
                         break;
                     case 't':
                         channel.setTopicSecured(settingMode);
@@ -258,7 +283,8 @@ bool Server::handleModeCommand(int clientSocket, const std::string& channelName,
                         sendResponse(clientSocket, "ERROR: Unknown mode.");
                         return false;
                 }
-            }
+	            std::cout << "/" << channel.getInviteOnly() << "/" << std::endl;
+			}
             sendResponse(clientSocket, "Mode set successfully.");
             return true;
         }

@@ -43,6 +43,6 @@ private:
 	bool handlePingCommand(int clientSocket, const std::string& server);
 	bool handlePongCommand();
 	bool handleListCommand(int clientSocket);
-    bool handleModeCommand(int clientSocket, const std::string& channelName, const std::string& modeParams, const std::string& newModeParam);
+    bool handleModeCommand(int clientSocket, std::string& params);
     //void log(const std::string& message);
 };
