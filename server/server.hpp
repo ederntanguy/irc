@@ -8,6 +8,7 @@
 #include <iostream>
 #include "../user/user.hpp"
 #include "../channel/channel.hpp"
+#include <stdlib.h>
 
 #define PORT 6697
 #define NUMBER_CLIENT_MAX 20
@@ -42,6 +43,6 @@ private:
 	bool handlePingCommand(int clientSocket, const std::string& server);
 	bool handlePongCommand();
 	bool handleListCommand(int clientSocket);
-
+    bool handleModeCommand(int clientSocket, const std::string& channelName, const std::string& modeParams, const std::string& newModeParam);
     //void log(const std::string& message);
 };

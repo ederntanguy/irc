@@ -117,16 +117,17 @@ bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>&
 
 
 bool Server::handlePrivMsgCommand(int clientSocket, const std::string& recipient, const std::string& message) {
-    std::map<std::string, Channel>::iterator channelIt = channels.find(recipient);
-    if (channelIt != channels.end()) {
-        const std::set<int>& usersInChannel = channelIt->second.getUsers();
-        for (std::set<int>::const_iterator userIt = usersInChannel.begin(); userIt != usersInChannel.end(); ++userIt) {
-            int userSocket = *userIt;
-            if (userSocket != clientSocket) {
-                sendResponse(userSocket, message);
+    for (std::vector<Channel>::iterator it = channels.begin(); it != channels.end(); ++it) {
+        if (it->getName() == recipient) {
+            const std::set<int>& usersInChannel = it->getUsers();
+            for (std::set<int>::const_iterator userIt = usersInChannel.begin(); userIt != usersInChannel.end(); ++userIt) {
+                int userSocket = *userIt;
+                if (userSocket != clientSocket) {
+                    sendResponse(userSocket, message);
+                }
             }
+            return true;
         }
-        return true;
     }
     for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
         if (it->nickname == recipient) {
@@ -154,10 +155,116 @@ bool Server::handlePongCommand() {
 }
 
 bool Server::handleListCommand(int clientSocket) {
-    for (std::map<std::string, Channel>::iterator it = channels.begin(); it != channels.end(); ++it) {
-        std::string channelInfo = "Channel: " + it->first + "\n Topic: " + it->second.getTopic();
+    for (std::vector<Channel>::iterator it = channels.begin(); it != channels.end(); ++it) {
+        std::string channelInfo = "Channel: " + it->getName() + "\n Topic: " + it->getTopic();
         sendResponse(clientSocket, channelInfo);
     }
     sendResponse(clientSocket, "End of channel list.\r\n");
     return true;
 }
+
+
+bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> &params) {
+	size_t tmp = params[1].find(' ') + 1;
+	size_t res1, res2;
+	std::vector<std::string> channelNames;
+	while (params[1].size() > tmp) {
+		res1 = params[1].find(',', tmp);
+		res2 = params[1].find(' ', tmp);
+		if (res1 < res2) {
+			channelNames.push_back(params[1].substr(tmp, res1 - tmp));
+			tmp = res1 + 1;
+		} else if (res1 > res2) {
+			channelNames.push_back(params[1].substr(tmp, res2 - tmp));
+			tmp = res2 + 1;
+		} else if (res1 >= params[1].size()) {
+			channelNames.push_back(params[1].substr(tmp, res1 - tmp - 1));
+			tmp = params[1].size();
+		} else {
+			std::cerr << "wow trop bizarre la" << std::endl;
+			return false;
+		}
+	}
+    for (size_t i = 0; i < channelNames.size(); ++i) {
+        std::vector<Channel>::iterator channelIt = channels.begin();
+        for (; channelIt != channels.end(); ++channelIt) {
+            if (channelIt->getName() == channelNames[i]) {
+                if (channelIt->getInviteOnly() && !channelIt->isUserInvited(clientSocket)) {
+                    sendResponse(clientSocket, "ERROR: " + channelNames[i] + " is invite-only.");
+                    return false;
+                }
+                channelIt->addUser(clientSocket);
+                sendResponse(clientSocket, ":" + params[0] + " JOIN :" + channelNames[i]);
+                break;
+            }
+        }
+        if (channelIt == channels.end()) {
+            sendResponse(clientSocket, "ERROR: Channel does not exist.");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Server::handleModeCommand(int clientSocket, const std::string& channelName, const std::string& modeParams, const std::string& newModeParam) {
+    std::vector<Channel>::iterator channelIt = channels.begin();
+    for (; channelIt != channels.end(); ++channelIt) {
+        if (channelIt->getName() == channelName) {
+            Channel& channel = *channelIt;
+            bool settingMode = true;
+            for (std::string::const_iterator it = modeParams.begin(); it != modeParams.end(); ++it) {
+                char mode = *it;
+                switch (mode) {
+                    case '+':
+                        settingMode = true;
+                        break;
+                    case '-':
+                        settingMode = false;
+                        break;
+                    case 'i':
+                        channel.setInviteOnly(settingMode);
+                        break;
+                    case 't':
+                        channel.setTopicSecured(settingMode);
+                        break;
+                    case 'k':
+                        if (settingMode) {
+                            channel.setChannelKey(newModeParam);
+                        } else {
+                            channel.removeChannelKey();
+                        }
+                        break;
+                    case 'o':
+                        {
+                            int operatorId = atoi(newModeParam.c_str());
+                            if (settingMode) {
+                                channel.addOperator(operatorId);
+                            } else {
+                                channel.removeOperator(operatorId);
+                            }
+                        }
+                        break;
+                    case 'l':
+                        {
+                            int userLimit = atoi(newModeParam.c_str());
+                            if (settingMode) {
+                                channel.setUserLimit(userLimit);
+                            } else {
+                                channel.removeUserLimit();
+                            }
+                        }
+                        break;
+                    default:
+                        sendResponse(clientSocket, "ERROR: Unknown mode.");
+                        return false;
+                }
+            }
+            sendResponse(clientSocket, "Mode set successfully.");
+            return true;
+        }
+    }
+    sendResponse(clientSocket, "ERROR: Channel does not exist.");
+    return false;
+}
+
+

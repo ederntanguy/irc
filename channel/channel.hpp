@@ -5,10 +5,40 @@ class Channel {
 public:
     Channel(const std::string& name) : channelName(name) {}
 
+void setChannelKey(const std::string& key) {
+        channelKey = key;
+    }
+
+    void removeChannelKey() {
+        channelKey.clear();
+    }
+
+    bool isCorrectKey(const std::string& key) const {
+        return channelKey == key;
+    }
+    void setTopicSecured(bool value) {
+        isTopicSecured = value;
+    }
+    void setUserLimit(int limit) {
+        userNumberLimit = limit;
+    }
+
+    void removeUserLimit() {
+        userNumberLimit = -1;
+    }
+
+    bool isUserLimitReached() const {
+        return userNumberLimit != -1 && users.size() >= static_cast<size_t>(userNumberLimit);
+    }
+    
     void setInviteOnly(bool value) {
         isInviteOnly = value;
     }
 
+    int getUserLimit() const {
+        return userNumberLimit;
+    }
+    
     bool getInviteOnly() const {
         return isInviteOnly;
     }
@@ -63,5 +93,5 @@ private:
     std::string channelKey;
     bool        isInviteOnly;
     bool        isTopicSecured;
-    int         userNumberLimit;
+    int         userNumberLimit; //-1 pour aucune limite
 };
