@@ -1,5 +1,15 @@
 #include "server.hpp"
 
+std::string onlyPrintable(const std::string &string) {
+	std::string ret;
+	int i = 0;
+	while (isprint(string[i]) != 0) {
+		ret.push_back(string[i]);
+		i++;
+	}
+	return ret;
+}
+
 bool Server::sendResponse(int clientSocket, std::string msg) {
 	msg.push_back('\r');
 	msg.push_back('\n');
@@ -32,7 +42,7 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
         }
     } else if (command == "PING") {
         if (params.size() >= 1) {
-            return handlePingCommand(clientSocket, params[0]);
+            return handlePingCommand(clientSocket, onlyPrintable(params[1].substr(params[1].find(' ') + 1, params[1].size())));
         }
     } else if (command == "PONG") {
         if (params.size() >= 1) {
@@ -150,11 +160,8 @@ bool Server::handlePrivMsgCommand(int clientSocket, const std::string &owner, co
 
 bool Server::handlePingCommand(int clientSocket, const std::string& server) {
 	std::string pongResponse;
-	if (server == "irc")
-		pongResponse = "PONG :irc";
-	else
-		pongResponse = "PONG " + server;
-	sendResponse(clientSocket, pongResponse);
+	(void)server;
+	sendResponse(clientSocket, "PONG " + server);
     return true;
 }
 
@@ -169,16 +176,6 @@ bool Server::handleListCommand(int clientSocket) {
     }
     sendResponse(clientSocket, "End of channel list.");
     return true;
-}
-
-std::string onlyAlphaNum(const std::string &string) {
-	std::string ret;
-	int i = 0;
-	while (isprint(string[i]) != 0) {
-		ret.push_back(string[i]);
-		i++;
-	}
-	return ret;
 }
 
 bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> &params) {
@@ -207,7 +204,7 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
 			sendResponse(clientSocket, ":irc ERROR the channel name is not formated correctly ");
 			return false;
 		}
-		std::string tmpChalName = onlyAlphaNum(channelNames[i]);
+		std::string tmpChalName = onlyPrintable(channelNames[i]);
         std::vector<Channel>::iterator channelIt = channels.begin();
         for (; channelIt != channels.end(); ++channelIt) {
             if (channelIt->getName() == tmpChalName) {

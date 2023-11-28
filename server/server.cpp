@@ -77,14 +77,13 @@ void Server::run() {
 						std::vector<std::string> allLine = multipleLine(test);
 	                    for (size_t j = 0; j < allLine.size(); ++j) {
 		                    processIncomingData(allLine[j], &fds, i);
+		                    std::cout << "/" << allLine[j] << "/" << std::endl;
 	                    }
-                        std::cout << "/" << test << "/" << std::endl;
                         for (int i = 0; i < 1000; ++i) {
                             buffer[i] = 0;
                         }
                     }
                     else if (users[i].isInit == 0 && users[i].nickname != "" && users[i].username != "") {
-                        std::cout << "la" << std::endl;
 						std::string welcomeMsg = ":irc 001 " + users[i].nickname + " :Welcome to the IRC Network, " + users[i].nickname + "\r\n";
                         send(fds[i].fd, welcomeMsg.c_str(), welcomeMsg.size(), MSG_CONFIRM);
                         users[i].isInit = 1;
