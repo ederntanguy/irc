@@ -44,8 +44,20 @@ Server::Server() {
 Server::~Server() {
 }
 
+std::vector<std::string> multipleLine(std::string buffer) {
+	size_t i = 0;
+	size_t j;
+	std::vector<std::string> ret;
+	while (i < buffer.size()) {
+		j = buffer.find('\n', i) + 1;
+		ret.push_back(buffer.substr(i, j - i));
+		i = j;
+	}
+	return ret;
+}
+
 void Server::run() {
-    char buffer[1000] = {0};
+    char buffer[10000] = {0};
     int ret;
     std::vector<struct pollfd> fds;
 
@@ -62,14 +74,18 @@ void Server::run() {
                     else if (fds[i].revents & POLLIN) {
                         recv(fds[i].fd, buffer, 1000, 0);
                         std::string test(buffer);
-                        processIncomingData(buffer, &fds, i);
-                        std::cout << test << std::endl;
+						std::vector<std::string> allLine = multipleLine(test);
+	                    for (size_t j = 0; j < allLine.size(); ++j) {
+		                    processIncomingData(allLine[j], &fds, i);
+	                    }
+                        std::cout << "/" << test << "/" << std::endl;
                         for (int i = 0; i < 1000; ++i) {
                             buffer[i] = 0;
                         }
                     }
-                    else if (fds[i].revents & POLLOUT && users[i].nickname != "" && users[i].username != "" && users[i].isInit == 0) {
-                        std::string welcomeMsg = ":irc 001 " + users[i].nickname + " :Welcome to the IRC Network, " + users[i].nickname + "\r\n";
+                    else if (users[i].isInit == 0 && users[i].nickname != "" && users[i].username != "") {
+                        std::cout << "la" << std::endl;
+						std::string welcomeMsg = ":irc 001 " + users[i].nickname + " :Welcome to the IRC Network, " + users[i].nickname + "\r\n";
                         send(fds[i].fd, welcomeMsg.c_str(), welcomeMsg.size(), MSG_CONFIRM);
                         users[i].isInit = 1;
                     }
@@ -111,6 +127,9 @@ bool Server::processIncomingData(const std::string& buffer, std::vector<struct p
 		return true;
 	else if (users[i].setNickName(buffer))
 		return true;
+	else if (users[i].isInit == 0 && users[i].nickname != "" && users[i].username != "") {
+
+	}
 	if (buffer.find("QUIT") == 0) {
 		closeConnection(fds, i);
 		return true;
