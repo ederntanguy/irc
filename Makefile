@@ -1,6 +1,6 @@
 NAME		=	ft_irc
 
-SRCS		=	main.cpp 
+SRCS		=	main.cpp utils.cpp
 
 SERVER		= 	server.cpp handleCommands.cpp
 

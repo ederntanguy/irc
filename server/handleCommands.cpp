@@ -1,14 +1,11 @@
 #include "server.hpp"
+#include <algorithm>
 
-std::string onlyPrintable(const std::string &string) {
-	std::string ret;
-	int i = 0;
-	while (isprint(string[i]) != 0) {
-		ret.push_back(string[i]);
-		i++;
-	}
-	return ret;
-}
+// utils function
+int findChannel(std::vector<Channel> channels, std::string name);
+int getUserId(std::vector<User> users, std::string name);
+std::string onlyPrintable(const std::string &string);
+
 
 bool Server::sendResponse(int clientSocket, std::string msg) {
 	msg.push_back('\r');
@@ -49,8 +46,15 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
             return handlePongCommand();
         }
     } else if (command == "MODE") {
-		std::string tmp = params[1].substr(params[1].find(' ') + 1, params[1].size());
-
+	    std::string tmp = params[1].substr(params[1].find(' ') + 1, params[1].size());
+	    return handleModeCommand(clientSocket, tmp);
+    } else if (command == "KICK") {
+	    return handleKickCommand(clientSocket, params);
+    } else if (command == "INVITE") {
+	    std::string tmp = params[1].substr(params[1].find(' ') + 1, params[1].size());
+	    return handleModeCommand(clientSocket, tmp);
+    } else if (command == "TOPIC") {
+	    std::string tmp = params[1].substr(params[1].find(' ') + 1, params[1].size());
 	    return handleModeCommand(clientSocket, tmp);
     } else if (command == "LIST") {
 	    return handleListCommand(clientSocket);
@@ -116,16 +120,6 @@ bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>&
 			sendResponse(clientSocket, ":irc ERROR " + channelNames[i] + " can't be a channel");
 			return false;
 		}
-//		std::map<std::string, Channel>::iterator channelIt = channels.find(channelNames[i]);
-//		if (channelIt == channels.end()) {
-//			sendResponse(clientSocket, ":irc ERROR Channel not found.\r\n");
-//			return false;
-//		}
-//		if (!channelIt->second.isUserInChannel(clientSocket)) {
-//			sendResponse(clientSocket, ":irc ERROR Not in the specified channel.\r\n");
-//			return false;
-//		}
-//		channelIt->second.removeUser(clientSocket);
 		sendResponse(clientSocket, ":" + params[0] + " PART :" + channelNames[i]);
 	}
 	return true;
@@ -134,18 +128,22 @@ bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>&
 
 bool Server::handlePrivMsgCommand(int clientSocket, const std::string &owner, const std::string& recipient, const std::string& message) {
 	if (recipient[0] == '#') {
-		for (std::vector<Channel>::iterator it = channels.begin(); it != channels.end(); ++it) {
-			if (it->getName() == recipient) {
-				const std::set<int>& usersInChannel = it->getUsers();
-				for (std::set<int>::const_iterator userIt = usersInChannel.begin(); userIt != usersInChannel.end(); ++userIt) {
-					int userSocket = *userIt;
-					if (userSocket != clientSocket) {
-						sendResponse(userSocket, ":" + owner + " " + message);
-					}
-				}
-				return true;
+		int channelPos = findChannel(channels, recipient);
+		if (channelPos == -1) {
+			sendResponse(clientSocket, ":irc ERROR The channel " + recipient + " does not exist");
+			return false;
+		}
+		if (!channels[channelPos].isUserInChannel(clientSocket)) {
+			sendResponse(clientSocket, ":irc ERROR you are not in the channel " + recipient);
+			return false;
+		}
+		std::set<int> usersId = channels[channelPos].getUsers();
+		for (std::set<int>::iterator it = usersId.begin(); it != usersId.end(); it++) {
+			if (*it != clientSocket) {
+				sendResponse(*it, ":" + owner + " " + message);
 			}
 		}
+		return true;
 	} else {
 		for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
 			if (it->nickname == recipient) {
@@ -226,6 +224,7 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
 				sendResponse(clientSocket, ":irc ERROR can't add user to the channel");
 				return false;
 			}
+	        channels[channels.size() - 1].addOperator(clientSocket);
 	        sendResponse(clientSocket, ":" + params[0] + " JOIN :" +tmpChalName);
             return false;
         }
@@ -298,6 +297,52 @@ bool Server::handleModeCommand(int clientSocket, std::string& params) {
     }
     sendResponse(clientSocket, ":irc ERROR Channel does not exist.");
     return false;
+}
+
+bool Server::handleKickCommand(int clientSocket, const std::vector<std::string> &params) {
+	int i = params[1].find(' ', params[1].find(' ') + 1);
+	std::string channel = onlyPrintable(params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1));
+	std::string userKick = onlyPrintable(params[1].substr(i + 1, params[1].find(' ', i + 1) - i - 1));
+	int msgPos = params[1].find(':');
+	int channelPos = findChannel(channels, channel);
+	std::cout << "channelPos " << channelPos << std::endl;
+	if (channelPos == -1) {
+		sendResponse(clientSocket, ":irc ERROR The channel " + channel + " does not exist");
+		return false;
+	}
+	if (!channels[channelPos].isOperator(clientSocket)) {
+		sendResponse(clientSocket, ":irc ERROR you are not a operator in the channel " + channel);
+		return false;
+	}
+	int userId = getUserId(users, userKick);
+	if (userId == -1) {
+		sendResponse(clientSocket, ":irc ERROR The user " + userKick + " does not exist");
+		return false;
+	}
+	if (!channels[channelPos].isUserInChannel(userId)) {
+		sendResponse(clientSocket, ":irc ERROR The user " + userKick + " does not exist in the channel " + channel);
+		return false;
+	}
+	channels[channelPos].removeUser(userId);
+	std::cout << "la/" << ":" + params[0] + " " + onlyPrintable(params[1]) << "/al" << std::endl;
+	sendResponse(userId, ":" + params[0] + " " + onlyPrintable(params[1]));
+	std::set<int> usersChannel = channels[channelPos].getUsers();
+	for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
+		sendResponse((*it), ":" + params[0] + " " + params[1]);
+	}
+	return true;
+}
+
+bool Server::handleInviteCommand(int clientSocket, const std::vector<std::string> &params) {
+	(void)clientSocket;
+	(void)params;
+	return true;
+}
+
+bool Server::handleTopicCommand(int clientSocket, const std::vector<std::string> &params) {
+	(void)clientSocket;
+	(void)params;
+	return true;
 }
 
 

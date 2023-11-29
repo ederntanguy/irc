@@ -42,6 +42,9 @@ private:
 	bool handlePrivMsgCommand(int clientSocket, const std::string &owner, const std::string& recipient, const std::string& message);
 	bool handlePingCommand(int clientSocket, const std::string& server);
 	bool handlePongCommand();
+	bool handleKickCommand(int clientSocket, const std::vector<std::string> &params);
+	bool handleInviteCommand(int clientSocket, const std::vector<std::string> &params);
+	bool handleTopicCommand(int clientSocket, const std::vector<std::string> &params);
 	bool handleListCommand(int clientSocket);
     bool handleModeCommand(int clientSocket, std::string& params);
     //void log(const std::string& message);
