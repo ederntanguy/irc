@@ -303,7 +303,6 @@ bool Server::handleKickCommand(int clientSocket, const std::vector<std::string> 
 	int i = params[1].find(' ', params[1].find(' ') + 1);
 	std::string channel = onlyPrintable(params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1));
 	std::string userKick = onlyPrintable(params[1].substr(i + 1, params[1].find(' ', i + 1) - i - 1));
-	int msgPos = params[1].find(':');
 	int channelPos = findChannel(channels, channel);
 	std::cout << "channelPos " << channelPos << std::endl;
 	if (channelPos == -1) {
