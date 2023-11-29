@@ -51,11 +51,9 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
     } else if (command == "KICK") {
 	    return handleKickCommand(clientSocket, params);
     } else if (command == "INVITE") {
-	    std::string tmp = params[1].substr(params[1].find(' ') + 1, params[1].size());
-	    return handleModeCommand(clientSocket, tmp);
+	    return handleInviteCommand(clientSocket, params);
     } else if (command == "TOPIC") {
-	    std::string tmp = params[1].substr(params[1].find(' ') + 1, params[1].size());
-	    return handleModeCommand(clientSocket, tmp);
+	    return handleTopicCommand(clientSocket, params);
     } else if (command == "LIST") {
 	    return handleListCommand(clientSocket);
     }
@@ -210,6 +208,10 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
                     sendResponse(clientSocket, ":irc ERROR " + tmpChalName + " is invite-only.");
                     return false;
                 }
+				if (channelIt->isUserLimitReached()) {
+					sendResponse(clientSocket, ":irc ERROR the channel as reached is max user value");
+					return false;
+				}
 				if (!channelIt->addUser(clientSocket)) {
 					sendResponse(clientSocket, ":irc ERROR can't add user to the channel");
 					return false;
@@ -304,7 +306,6 @@ bool Server::handleKickCommand(int clientSocket, const std::vector<std::string> 
 	std::string channel = onlyPrintable(params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1));
 	std::string userKick = onlyPrintable(params[1].substr(i + 1, params[1].find(' ', i + 1) - i - 1));
 	int channelPos = findChannel(channels, channel);
-	std::cout << "channelPos " << channelPos << std::endl;
 	if (channelPos == -1) {
 		sendResponse(clientSocket, ":irc ERROR The channel " + channel + " does not exist");
 		return false;
@@ -333,14 +334,66 @@ bool Server::handleKickCommand(int clientSocket, const std::vector<std::string> 
 }
 
 bool Server::handleInviteCommand(int clientSocket, const std::vector<std::string> &params) {
-	(void)clientSocket;
-	(void)params;
+	int i = params[1].find(' ', params[1].find(' ') + 1);
+	std::string userInvite = onlyPrintable(params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1));
+	std::string channel = onlyPrintable(params[1].substr(i + 1, params[1].find(' ', i + 1) - i - 1));
+	int channelPos = findChannel(channels, channel);
+	if (channelPos == -1) {
+		sendResponse(clientSocket, ":irc ERROR The channel " + channel + " does not exist");
+		return false;
+	}
+	if (!channels[channelPos].isOperator(clientSocket) && channels[channelPos].getInviteOnly()) {
+		sendResponse(clientSocket, ":irc ERROR you are not a operator in the channel " + channel);
+		return false;
+	}
+	int userId = getUserId(users, userInvite);
+	if (userId == -1) {
+		sendResponse(clientSocket, ":irc ERROR The user " + userInvite + " does not exist");
+		return false;
+	}
+	if (channels[channelPos].isUserInvited(userId)) {
+		sendResponse(clientSocket, ":irc ERROR The user " + userInvite + " is already invited");
+		return false;
+	}
+	channels[channelPos].addInvitedUser(userId);
+	sendResponse(userId, ":" + params[0] + " " + params[1]);
 	return true;
 }
 
 bool Server::handleTopicCommand(int clientSocket, const std::vector<std::string> &params) {
 	(void)clientSocket;
 	(void)params;
+	int i = params[1].find(' ', params[1].find(' ') + 1);
+	std::string channel = onlyPrintable(params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1));
+	std::string topic;
+	if (params[1].find(':') == std::string::npos)
+		topic = "";
+	else
+		topic = onlyPrintable(params[1].substr(params[1].find(':'), params[i].size()));
+	std::cout << topic << " " << topic.empty() << " " << topic.size() << std::endl;
+	int channelPos = findChannel(channels, channel);
+	if (channelPos == -1) {
+		sendResponse(clientSocket, ":irc ERROR The channel " + channel + " does not exist");
+		return false;
+	}
+	if (channels[channelPos].getTopicSecured() && !channels[channelPos].isOperator(clientSocket)) {
+		sendResponse(clientSocket, ":irc ERROR you are not a operator in the channel " + channel);
+		return false;
+	}
+	if (topic.empty()) {
+		if (channels[channelPos].getTopic().empty()) {
+			sendResponse(clientSocket, ":irc 331 " + params[0] + " " + channel + " :topic does not exist");
+			return false;
+		} else {
+			sendResponse(clientSocket, ":irc 332 " + params[0] + " " + channel + " :" + channels[channelPos].getTopic());
+			return true;
+		}
+	}
+	channels[channelPos].setTopic(topic);
+	std::set<int> usersChannel = channels[channelPos].getUsers();
+	for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end() ; ++it) {
+		sendResponse((*it), ":" + params[0] + " " + params[1]);
+	}
 	return true;
 }
 

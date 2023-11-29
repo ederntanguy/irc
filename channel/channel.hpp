@@ -3,7 +3,7 @@
 
 class Channel {
 public:
-    Channel(const std::string& name) : channelName(name), isInviteOnly(false), isTopicSecured(false), userNumberLimit(-1) {}
+    Channel(const std::string& name) : channelName(name),  channelTopic(""), isInviteOnly(false), isTopicSecured(false), userNumberLimit(-1){}
 	~Channel() {}
 
 void setChannelKey(const std::string& key) {
@@ -17,6 +17,9 @@ void setChannelKey(const std::string& key) {
     bool isCorrectKey(const std::string& key) const {
         return channelKey == key;
     }
+	bool getTopicSecured() {
+		return isTopicSecured;
+	}
     void setTopicSecured(bool value) {
         isTopicSecured = value;
     }
