@@ -46,6 +46,6 @@ private:
 	bool handleInviteCommand(int clientSocket, const std::vector<std::string> &params);
 	bool handleTopicCommand(int clientSocket, const std::vector<std::string> &params);
 	bool handleListCommand(int clientSocket);
-    bool handleModeCommand(int clientSocket, std::string& params);
+	bool handleModeCommand(int clientSocket,const std::string &nickName, std::string& params);
     //void log(const std::string& message);
 };

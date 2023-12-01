@@ -47,7 +47,7 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
         }
     } else if (command == "MODE") {
 	    std::string tmp = params[1].substr(params[1].find(' ') + 1, params[1].size());
-	    return handleModeCommand(clientSocket, tmp);
+	    return handleModeCommand(clientSocket, params[0], tmp);
     } else if (command == "KICK") {
 	    return handleKickCommand(clientSocket, params);
     } else if (command == "INVITE") {
@@ -234,71 +234,90 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
     return true;
 }
 
-bool Server::handleModeCommand(int clientSocket, std::string& params) {
+bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std::string& params) {
+	params = onlyPrintable(params);
 	const std::string channelName = params.substr(0, params.find(' '));
 	params = params.substr(params.find(' ') + 1, params.size());
 	const std::string modeParams = params.substr(0, params.find(' '));
 	params = params.substr(params.find(' ') + 1, params.size());
 	const std::string newModeParam = params.substr(0, params.find(' '));
-	std::vector<Channel>::iterator channelIt = channels.begin();
-    for (; channelIt != channels.end(); ++channelIt) {
+	std::cout << "la : " << channelName << "  " << modeParams << "  " << newModeParam << std::endl;
+	int channelId = findChannel(channels, channelName);
+	if (channelId == -1) {
+		sendResponse(clientSocket, ":irc ERROR Channel does not exist.");
+		return false;
+	}
+	if (!channels[channelId].isOperator(clientSocket)) {
+		sendResponse(clientSocket, ":irc ERROR you are not a operator in the channel " + channelName);
+		return false;
+	}
+	bool settingMode = true;
+	std::set<int> usersChannel = channels[channelId].getUsers();
+	for (std::string::const_iterator it = modeParams.begin(); it != modeParams.end(); ++it) {
+		char mode = *it;
+		switch (mode) {
+			case '+':
+				settingMode = true;
+				break;
+			case '-':
+				settingMode = false;
+				break;
+			case 'i':
+				channels[channelId].setInviteOnly(settingMode);
+				for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
+					sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + modeParams);
+				}
+				break;
+			case 't':
+				channels[channelId].setTopicSecured(settingMode);
+				for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
+					sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + modeParams);
+				}
+				break;
+			case 'k':
+				if (settingMode) {
+					channels[channelId].setChannelKey(newModeParam);
+				} else {
+					channels[channelId].removeChannelKey();
+				}
+				for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
+					sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + modeParams + " " + newModeParam);
+				}
+				break;
+			case 'o': {
 
-        if (channelIt->getName() == channelName) {
-            Channel& channel = *channelIt;
-            bool settingMode = true;
-            for (std::string::const_iterator it = modeParams.begin(); it != modeParams.end(); ++it) {
-                char mode = *it;
-                switch (mode) {
-                    case '+':
-		                settingMode = true;
-                        break;
-                    case '-':
-                        settingMode = false;
-                        break;
-                    case 'i':
-		                channel.setInviteOnly(settingMode);
-                        break;
-                    case 't':
-                        channel.setTopicSecured(settingMode);
-                        break;
-                    case 'k':
-                        if (settingMode) {
-                            channel.setChannelKey(newModeParam);
-                        } else {
-                            channel.removeChannelKey();
-                        }
-                        break;
-                    case 'o':
-                        {
-                            int operatorId = atoi(newModeParam.c_str());
-                            if (settingMode) {
-                                channel.addOperator(operatorId);
-                            } else {
-                                channel.removeOperator(operatorId);
-                            }
-                        }
-                        break;
-                    case 'l':
-                        {
-                            int userLimit = atoi(newModeParam.c_str());
-                            if (settingMode) {
-                                channel.setUserLimit(userLimit);
-                            } else {
-                                channel.removeUserLimit();
-                            }
-                        }
-                        break;
-                    default:
-                        sendResponse(clientSocket, ":irc ERROR Unknown mode.");
-                        return false;
-                }
+				int operatorId = atoi(newModeParam.c_str());
+				if (settingMode) {
+					channels[channelId].addOperator(operatorId);
+				} else {
+					channels[channelId].removeOperator(operatorId);
+				}
+				for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
+					sendResponse((*it),":" + nickName + " MODE " + channelName + " " + modeParams + " " + newModeParam);
+				}
 			}
-            sendResponse(clientSocket, "Mode set successfully.");
-            return true;
-        }
+				break;
+			case 'l':
+			{
+				int userLimit = atoi(newModeParam.c_str());
+				if (settingMode) {
+					channels[channelId].setUserLimit(userLimit);
+				} else {
+					channels[channelId].removeUserLimit();
+				}
+				for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
+					sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + modeParams + " " + newModeParam);
+				}
+			}
+				break;
+			default:
+			{
+				sendResponse(clientSocket, ":irc ERROR Unknown mode.");
+				return false;
+			}
+		}
     }
-    sendResponse(clientSocket, ":irc ERROR Channel does not exist.");
-    return false;
+	return true;
 }
 
 bool Server::handleKickCommand(int clientSocket, const std::vector<std::string> &params) {
@@ -361,16 +380,14 @@ bool Server::handleInviteCommand(int clientSocket, const std::vector<std::string
 }
 
 bool Server::handleTopicCommand(int clientSocket, const std::vector<std::string> &params) {
-	(void)clientSocket;
-	(void)params;
 	int i = params[1].find(' ', params[1].find(' ') + 1);
 	std::string channel = onlyPrintable(params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1));
 	std::string topic;
 	if (params[1].find(':') == std::string::npos)
 		topic = "";
-	else
-		topic = onlyPrintable(params[1].substr(params[1].find(':'), params[i].size()));
-	std::cout << topic << " " << topic.empty() << " " << topic.size() << std::endl;
+	else {
+		topic = params[1].substr(params[1].find(':'), params[1].size());
+	}
 	int channelPos = findChannel(channels, channel);
 	if (channelPos == -1) {
 		sendResponse(clientSocket, ":irc ERROR The channel " + channel + " does not exist");
