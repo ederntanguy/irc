@@ -93,31 +93,25 @@ bool Server::handleUserCommand(int clientSocket, const std::string& username, co
 }
 
 bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>& params) {
-	size_t tmp = params[1].find(' ') + 1;
-	size_t res1, res2;
-	std::vector<std::string> channelNames;
-	while (params[1].size() > tmp) {
-		res1 = params[1].find(',', tmp);
-		res2 = params[1].find(' ', tmp);
-		if (res1 < res2) {
-			channelNames.push_back(params[1].substr(tmp, res1 - tmp));
-			tmp = res1 + 1;
-		} else if (res1 > res2) {
-			channelNames.push_back(params[1].substr(tmp, res2 - tmp));
-			tmp = res2 + 1;
-		} else if (res1 >= params[1].size()) {
-			channelNames.push_back(params[1].substr(tmp, res1 - tmp - 1));
-			tmp = params[1].size();
-		} else {
-			std::cerr << "wow trop bizarre la" << std::endl;
-			return false;
-		}
-	}
+	std::string infos = params[1].substr(params[1].find(' ') + 1, params[1].size());
+	std::string tmpString = infos.substr(0, infos.find(' '));
+	std::vector<std::string> channelNames = splitString(tmpString, ',');
 	for (size_t i = 0; i < channelNames.size(); ++i) {
 		if (channelNames[i][0] != '#' && channelNames[i][0] != '&') {
 			sendResponse(clientSocket, ":irc ERROR " + channelNames[i] + " can't be a channel");
-			return false;
+			continue;
 		}
+		int channelId = findChannel(channels, channelNames[i]);
+		if (channelId == -1) {
+			sendResponse(clientSocket, ":irc ERROR " + channelNames[i] + " is not a channel");
+			continue;
+		}
+		if (!channels[channelId].removeUser(clientSocket)) {
+			sendResponse(clientSocket, ":irc ERROR you are not in the channel " + channelNames[i]);
+			continue;
+		}
+		if (channels[channelId].isOperator(clientSocket))
+			channels[channelId].removeOperator(clientSocket);
 		sendResponse(clientSocket, ":" + params[0] + " PART :" + channelNames[i]);
 	}
 	return true;
