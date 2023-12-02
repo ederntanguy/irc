@@ -113,6 +113,9 @@ bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>&
 		if (channels[channelId].isOperator(clientSocket))
 			channels[channelId].removeOperator(clientSocket);
 		sendResponse(clientSocket, ":" + params[0] + " PART :" + channelNames[i]);
+        if (channels[channelId].getUsers().size() == 0) {
+            channels.erase(channels.begin() + channelId);
+        }
 	}
 	return true;
 }
@@ -280,7 +283,11 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 				}
 				break;
 			case 'o': {
-				int operatorId = atoi(infoParams[posInfoParams].c_str());
+				int operatorId = getUserId(users, infoParams[posInfoParams]);
+                if (!channels[channelId].isUserInChannel(operatorId)) {
+                    sendResponse(clientSocket, ":irc ERROR the user is not in the channel " + channelName);
+                    continue;
+                }
 				if (settingMode) {
 					channels[channelId].addOperator(operatorId);
 				} else {
