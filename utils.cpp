@@ -32,3 +32,15 @@ std::string onlyPrintable(const std::string &string) {
 	}
 	return ret;
 }
+
+std::vector<std::string> splitString(std::string &value, char sep) {
+	std::vector<std::string> retValue;
+	value = onlyPrintable(value);
+	while (value.find(sep) != std::string::npos)
+	{
+		retValue.push_back(value.substr(0, value.find(sep)));
+		value = value.substr(value.find(sep) + 1, value.size());
+	}
+	retValue.push_back(value);
+	return retValue;
+}

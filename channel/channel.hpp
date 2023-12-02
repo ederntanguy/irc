@@ -14,9 +14,14 @@ void setChannelKey(const std::string& key) {
         channelKey.clear();
     }
 
-    bool isCorrectKey(const std::string& key) const {
-        return channelKey == key;
-    }
+	bool isCorrectKey(const std::string& key) const {
+		return channelKey == key;
+	}
+
+	bool isKeySet() const {
+		return !channelKey.empty();
+	}
+
 	bool getTopicSecured() {
 		return isTopicSecured;
 	}

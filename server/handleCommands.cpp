@@ -5,7 +5,7 @@
 int findChannel(std::vector<Channel> channels, std::string name);
 int getUserId(std::vector<User> users, std::string name);
 std::string onlyPrintable(const std::string &string);
-
+std::vector<std::string> splitString(std::string &value, char sep);
 
 bool Server::sendResponse(int clientSocket, std::string msg) {
 	msg.push_back('\r');
@@ -175,73 +175,69 @@ bool Server::handleListCommand(int clientSocket) {
 }
 
 bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> &params) {
-	size_t tmp = params[1].find(' ') + 1;
-	size_t res1, res2;
-	std::vector<std::string> channelNames;
-	while (params[1].size() > tmp) {
-		res1 = params[1].find(',', tmp);
-		res2 = params[1].find(' ', tmp);
-		if (res1 < res2) {
-			channelNames.push_back(params[1].substr(tmp, res1 - tmp));
-			tmp = res1 + 1;
-		} else if (res1 > res2) {
-			channelNames.push_back(params[1].substr(tmp, res2 - tmp));
-			tmp = res2 + 1;
-		} else if (res1 >= params[1].size()) {
-			channelNames.push_back(params[1].substr(tmp, res1 - tmp - 1));
-			tmp = params[1].size();
-		} else {
-			std::cerr << "wow trop bizarre la" << std::endl;
-			return false;
-		}
+	std::string infos = params[1].substr(params[1].find(' ') + 1, params[1].size());
+	std::string tmpString = infos.substr(0, infos.find(' '));
+	std::vector<std::string> channelsName = splitString(tmpString, ',');
+	std::vector<std::string> channelsParam;
+	std::cout << "test: " << infos << std::endl;
+	if (infos.find(' ') != std::string::npos) {
+		tmpString = infos.substr(infos.find(' ') + 1, infos.size());
+		channelsParam = splitString(tmpString, ',');
 	}
-    for (size_t i = 0; i < channelNames.size(); ++i) {
-		if (channelNames[i][0] != '#' && channelNames[i][0] != '&') {
+    for (size_t i = 0; i < channelsName.size(); ++i) {
+		if (channelsName[i][0] != '#' && channelsName[i][0] != '&') {
 			sendResponse(clientSocket, ":irc ERROR the channel name is not formated correctly ");
 			return false;
 		}
-		std::string tmpChalName = onlyPrintable(channelNames[i]);
+		std::string tmpChalName = onlyPrintable(channelsName[i]);
         std::vector<Channel>::iterator channelIt = channels.begin();
         for (; channelIt != channels.end(); ++channelIt) {
             if (channelIt->getName() == tmpChalName) {
                 if (channelIt->getInviteOnly() && !channelIt->isUserInvited(clientSocket)) {
                     sendResponse(clientSocket, ":irc ERROR " + tmpChalName + " is invite-only.");
-                    return false;
+	                break;
                 }
+				if(channelIt->isKeySet() && (channelsParam.size() <= i || !channelIt->isCorrectKey(channelsParam[i]))) {
+					sendResponse(clientSocket, ":irc ERROR the password enter is not good");
+					break;
+				}
 				if (channelIt->isUserLimitReached()) {
 					sendResponse(clientSocket, ":irc ERROR the channel as reached is max user value");
-					return false;
+					break;
 				}
 				if (!channelIt->addUser(clientSocket)) {
 					sendResponse(clientSocket, ":irc ERROR can't add user to the channel");
-					return false;
+					break;
 				}
                 sendResponse(clientSocket, ":" + params[0] + " JOIN :" + tmpChalName);
-                break;
+	            break;
             }
         }
         if (channelIt == channels.end()) {
 			channels.push_back(Channel(tmpChalName));
 			if (!channels[channels.size() - 1].addUser(clientSocket)) {
 				sendResponse(clientSocket, ":irc ERROR can't add user to the channel");
-				return false;
+				continue;
 			}
 	        channels[channels.size() - 1].addOperator(clientSocket);
 	        sendResponse(clientSocket, ":" + params[0] + " JOIN :" +tmpChalName);
-            return false;
         }
     }
     return true;
 }
 
 bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std::string& params) {
-	params = onlyPrintable(params);
-	const std::string channelName = params.substr(0, params.find(' '));
-	params = params.substr(params.find(' ') + 1, params.size());
-	const std::string modeParams = params.substr(0, params.find(' '));
-	params = params.substr(params.find(' ') + 1, params.size());
-	const std::string newModeParam = params.substr(0, params.find(' '));
-	std::cout << "la : " << channelName << "  " << modeParams << "  " << newModeParam << std::endl;
+	std::vector<std::string> allParams = splitString(params, ' ');
+	if (allParams.size() < 2) {
+		sendResponse(clientSocket, ":irc ERROR invalide number of parameters");
+		return false;
+	}
+	const std::string channelName = allParams[0];
+	const std::string modeParams = allParams[1];
+	std::vector<std::string> infoParams;
+	for (size_t i = 2; i < allParams.size(); ++i) {
+		infoParams.push_back(allParams[i]);
+	}
 	int channelId = findChannel(channels, channelName);
 	if (channelId == -1) {
 		sendResponse(clientSocket, ":irc ERROR Channel does not exist.");
@@ -253,6 +249,7 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 	}
 	bool settingMode = true;
 	std::set<int> usersChannel = channels[channelId].getUsers();
+	int posInfoParams = 0;
 	for (std::string::const_iterator it = modeParams.begin(); it != modeParams.end(); ++it) {
 		char mode = *it;
 		switch (mode) {
@@ -265,49 +262,57 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 			case 'i':
 				channels[channelId].setInviteOnly(settingMode);
 				for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
-					sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + modeParams);
+					sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + (settingMode == true ? '+' : '-') + mode);
 				}
 				break;
 			case 't':
 				channels[channelId].setTopicSecured(settingMode);
 				for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
-					sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + modeParams);
+					sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + (settingMode == true ? '+' : '-') + mode);
 				}
 				break;
 			case 'k':
 				if (settingMode) {
-					channels[channelId].setChannelKey(newModeParam);
+					channels[channelId].setChannelKey(infoParams[posInfoParams]);
+					for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
+						sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + (settingMode == true ? '+' : '-') + mode + " " + infoParams[posInfoParams]);
+					}
+					posInfoParams++;
 				} else {
 					channels[channelId].removeChannelKey();
-				}
-				for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
-					sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + modeParams + " " + newModeParam);
+					for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
+						sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + (settingMode == true ? '+' : '-') + mode);
+					}
 				}
 				break;
 			case 'o': {
-
-				int operatorId = atoi(newModeParam.c_str());
+				int operatorId = atoi(infoParams[posInfoParams].c_str());
 				if (settingMode) {
 					channels[channelId].addOperator(operatorId);
 				} else {
 					channels[channelId].removeOperator(operatorId);
 				}
 				for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
-					sendResponse((*it),":" + nickName + " MODE " + channelName + " " + modeParams + " " + newModeParam);
+					sendResponse((*it),":" + nickName + " MODE " + channelName + " " + (settingMode == true ? '+' : '-') + mode + " " + infoParams[posInfoParams]);
 				}
+				posInfoParams++;
 			}
 				break;
 			case 'l':
 			{
-				int userLimit = atoi(newModeParam.c_str());
+				int userLimit = atoi(infoParams[posInfoParams].c_str());
 				if (settingMode) {
 					channels[channelId].setUserLimit(userLimit);
+					for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
+						sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + (settingMode == true ? '+' : '-') + mode + " " + infoParams[posInfoParams]);
+					}
 				} else {
 					channels[channelId].removeUserLimit();
+					for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
+						sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + (settingMode == true ? '+' : '-') + mode);
+					}
 				}
-				for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
-					sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + modeParams + " " + newModeParam);
-				}
+				posInfoParams++;
 			}
 				break;
 			default:
