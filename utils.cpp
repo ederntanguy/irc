@@ -41,7 +41,7 @@ std::string onlyPrintable(const std::string &string) {
 	return ret;
 }
 
-std::vector<std::string> splitString(std::string &value, char sep) {
+std::vector<std::string> splitString(std::string value, char sep) {
 	std::vector<std::string> retValue;
 	value = onlyPrintable(value);
 	while (value.find(sep) != std::string::npos)
@@ -51,4 +51,20 @@ std::vector<std::string> splitString(std::string &value, char sep) {
 	}
 	retValue.push_back(value);
 	return retValue;
+}
+
+std::string multipleSpacesToOne(std::string value) {
+    std::string newValue;
+    for (size_t i = 0; i < value.size(); ++i) {
+        if (value[i] == ' ') {
+            newValue.push_back(value[i]);
+            i++;
+            while (i < value.size() && value[i] == ' ')
+                i++;
+            i--;
+            continue;
+        }
+        newValue.push_back(value[i]);
+    }
+    return newValue;
 }

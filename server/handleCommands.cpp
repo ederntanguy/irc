@@ -33,7 +33,7 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
         }
     } else if (command == "PING") {
         if (params.size() >= 1) {
-            return handlePingCommand(clientSocket, onlyPrintable(params[1].substr(params[1].find(' ') + 1, params[1].size())));
+            return handlePingCommand(clientSocket, params[1].substr(params[1].find(' ') + 1, params[1].size()));
         }
     } else if (command == "PONG") {
         if (params.size() >= 1) {
@@ -185,7 +185,7 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
 			sendResponse(clientSocket, ":irc ERROR the channel name is not formated correctly ");
 			return false;
 		}
-		std::string tmpChalName = onlyPrintable(channelsName[i]);
+		std::string tmpChalName = channelsName[i];
         std::vector<Channel>::iterator channelIt = channels.begin();
         for (; channelIt != channels.end(); ++channelIt) {
             if (channelIt->getName() == tmpChalName) {
@@ -354,8 +354,8 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 
 bool Server::handleKickCommand(int clientSocket, const std::vector<std::string> &params) {
 	int i = params[1].find(' ', params[1].find(' ') + 1);
-	std::string channel = onlyPrintable(params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1));
-	std::string userKick = onlyPrintable(params[1].substr(i + 1, params[1].find(' ', i + 1) - i - 1));
+	std::string channel = params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1);
+	std::string userKick = params[1].substr(i + 1, params[1].find(' ', i + 1) - i - 1);
 	int channelPos = findChannel(channels, channel);
 	if (channelPos == -1) {
         sendResponse(clientSocket, ":irc 403 " + params[0] + " " + channel + " :No such channel");
@@ -379,8 +379,7 @@ bool Server::handleKickCommand(int clientSocket, const std::vector<std::string> 
 		return false;
 	}
 	channels[channelPos].removeUser(userId);
-	std::cout << "la/" << ":" + params[0] + " " + onlyPrintable(params[1]) << "/al" << std::endl;
-	sendResponse(userId, ":" + params[0] + " " + onlyPrintable(params[1]));
+	sendResponse(userId, ":" + params[0] + " " + params[1]);
 	std::set<int> usersChannel = channels[channelPos].getUsers();
 	for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
 		sendResponse((*it), ":" + params[0] + " " + params[1]);
@@ -390,8 +389,8 @@ bool Server::handleKickCommand(int clientSocket, const std::vector<std::string> 
 
 bool Server::handleInviteCommand(int clientSocket, const std::vector<std::string> &params) {
 	int i = params[1].find(' ', params[1].find(' ') + 1);
-	std::string userInvite = onlyPrintable(params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1));
-	std::string channel = onlyPrintable(params[1].substr(i + 1, params[1].find(' ', i + 1) - i - 1));
+	std::string userInvite = params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1);
+	std::string channel = params[1].substr(i + 1, params[1].find(' ', i + 1) - i - 1);
 	int channelPos = findChannel(channels, channel);
 	if (channelPos == -1) {
         sendResponse(clientSocket, ":irc 403 " + params[0] + " " + channel + " :No such channel");
@@ -421,7 +420,7 @@ bool Server::handleInviteCommand(int clientSocket, const std::vector<std::string
 
 bool Server::handleTopicCommand(int clientSocket, const std::vector<std::string> &params) {
 	int i = params[1].find(' ', params[1].find(' ') + 1);
-	std::string channel = onlyPrintable(params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1));
+	std::string channel = params[1].substr(params[1].find(' ') + 1, i - params[1].find(' ') - 1);
 	std::string topic;
 	if (params[1].find(':') == std::string::npos)
 		topic = "";

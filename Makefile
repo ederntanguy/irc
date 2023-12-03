@@ -13,7 +13,7 @@ OBJS		=	${addprefix ${OBJDIR_SRCS}/,${SRCS:.cpp=.o}} \
 				${addprefix ${OBJDIR_SRCS}/,${SERVER:.cpp=.o}}
 
 CC			=	c++
-CFLAGS		=	-Wall -Werror -Wextra -std=c++98
+CFLAGS		=	-Wall -Werror -Wextra -std=c++98 -g3
 
 RM			=	rm -f
 

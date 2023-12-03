@@ -14,8 +14,9 @@
 int findChannel(std::vector<Channel> channels, std::string name);
 int getSocketId(std::vector<User> users, std::string name);
 std::string onlyPrintable(const std::string &string);
-std::vector<std::string> splitString(std::string &value, char sep);
+std::vector<std::string> splitString(std::string value, char sep);
 int getUserIdBySocketId(std::vector<User> users, int id);
+std::string multipleSpacesToOne(std::string value);
 
 class Server {
 public:
@@ -54,5 +55,4 @@ private:
 	bool handleTopicCommand(int clientSocket, const std::vector<std::string> &params);
 	bool handleListCommand(int clientSocket);
 	bool handleModeCommand(int clientSocket,const std::string &nickName, std::string& params);
-    //void log(const std::string& message);
 };
