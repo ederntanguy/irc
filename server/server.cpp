@@ -78,10 +78,15 @@ void Server::run() {
 	                    for (size_t j = 0; j < allLine.size(); ++j) {
 		                    if (!processIncomingData(allLine[j], &fds, i))
                                 return;
-                            if (users[i].nickname != "" && users[i].username != "" && users[i].isConnected == -1) {
+                            if (users[i].nickname != "" && users[i].username != "" && (users[i].isConnected == -1 ||
+                                    isConflictNick(users, users[i].nickname))) {
+                                if (isConflictNick(users, users[i].nickname)) {
+                                    sendResponse(users[i].clientSocket, ":irc 436 " + users[i].nickname + " :Nickname collision KILL");
+                                    closeConnection(&fds, i);
+                                    continue;
+                                }
                                 sendResponse(users[i].clientSocket, ":irc 464 " + users[i].nickname + " :Password incorrect");
                                 closeConnection(&fds, i);
-
                             }
                             std::cout << "/" << allLine[j] << "/" << std::endl;
 	                    }

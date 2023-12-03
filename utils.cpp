@@ -68,3 +68,11 @@ std::string multipleSpacesToOne(std::string value) {
     }
     return newValue;
 }
+
+int isConflictNick(std::vector<User> users, std::string name) {
+    for (size_t i = 0; i < users.size() - 1; ++i) {
+        if (users[i].nickname == name)
+            return 1;
+    }
+    return 0;
+}

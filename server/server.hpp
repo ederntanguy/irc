@@ -17,6 +17,7 @@ std::string onlyPrintable(const std::string &string);
 std::vector<std::string> splitString(std::string value, char sep);
 int getUserIdBySocketId(std::vector<User> users, int id);
 std::string multipleSpacesToOne(std::string value);
+int isConflictNick(std::vector<User> users, std::string name);
 
 class Server {
 public:
