@@ -17,6 +17,7 @@ public:
 	std::set<std::string> channels;
 	int clientSocket;
 	int isInit;
+    int isConnected;
 };
 
 #endif //IRC_USER_HPP

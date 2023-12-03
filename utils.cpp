@@ -14,13 +14,21 @@ int findChannel(std::vector<Channel> channels, std::string name) {
 	return -1;
 }
 
-int getUserId(std::vector<User> users, std::string name) {
-	std::cout << "/" << name << "/" << std::endl;
-	for (size_t i = 0; i < users.size(); ++i) {
-		if (users[i].nickname == name)
-			return users[i].clientSocket;
-	}
-	return -1;
+int getSocketId(std::vector<User> users, std::string name) {
+    std::cout << "/" << name << "/" << std::endl;
+    for (size_t i = 0; i < users.size(); ++i) {
+        if (users[i].nickname == name)
+            return users[i].clientSocket;
+    }
+    return -1;
+}
+
+int getUserIdBySocketId(std::vector<User> users, int id) {
+    for (size_t i = 0; i < users.size(); ++i) {
+        if (users[i].clientSocket == id)
+            return i;
+    }
+    return -1;
 }
 
 std::string onlyPrintable(const std::string &string) {

@@ -1,12 +1,6 @@
 #include "server.hpp"
 #include <algorithm>
 
-// utils function
-int findChannel(std::vector<Channel> channels, std::string name);
-int getUserId(std::vector<User> users, std::string name);
-std::string onlyPrintable(const std::string &string);
-std::vector<std::string> splitString(std::string &value, char sep);
-
 bool Server::sendResponse(int clientSocket, std::string msg) {
 	msg.push_back('\r');
 	msg.push_back('\n');
@@ -62,16 +56,21 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
 }
 
 bool Server::handleNickCommand(int clientSocket, const std::string& nickname) {
+    int userId = getUserIdBySocketId(users, clientSocket);
+    if (nickname.empty()) {
+        sendResponse(clientSocket, ":irc 431 :No nickname given");
+        return false;
+    }
     for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
         if (it->nickname == nickname) {
-            sendResponse(clientSocket, ":irc ERROR Nickname is already in use.");
+            sendResponse(clientSocket, ":irc 433 " + users[userId].nickname + " " + nickname + " :Nickname is already in use.");
             return false;
         }
     }
     for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
         if (it->clientSocket == clientSocket) {
             it->nickname = nickname;
-            sendResponse(clientSocket, "NICK command successful.");
+            sendResponse(clientSocket, ":" + users[userId].nickname + " NICK " + nickname);
             return true;
         }
     }
@@ -103,11 +102,11 @@ bool Server::handlePartCommand(int clientSocket, const std::vector<std::string>&
 		}
 		int channelId = findChannel(channels, channelNames[i]);
 		if (channelId == -1) {
-			sendResponse(clientSocket, ":irc ERROR " + channelNames[i] + " is not a channel");
+			sendResponse(clientSocket, ":irc 403 " + params[0] + " " + channelNames[i] + " :No such channel");
 			continue;
 		}
 		if (!channels[channelId].removeUser(clientSocket)) {
-			sendResponse(clientSocket, ":irc ERROR you are not in the channel " + channelNames[i]);
+			sendResponse(clientSocket, ":irc 442 " + params[0] + " " + channelNames[i] + " :you are not in the channel");
 			continue;
 		}
 		if (channels[channelId].isOperator(clientSocket))
@@ -125,11 +124,11 @@ bool Server::handlePrivMsgCommand(int clientSocket, const std::string &owner, co
 	if (recipient[0] == '#') {
 		int channelPos = findChannel(channels, recipient);
 		if (channelPos == -1) {
-			sendResponse(clientSocket, ":irc ERROR The channel " + recipient + " does not exist");
+            sendResponse(clientSocket, ":irc 401 " + owner + " " + recipient + " :No such channel");
 			return false;
 		}
 		if (!channels[channelPos].isUserInChannel(clientSocket)) {
-			sendResponse(clientSocket, ":irc ERROR you are not in the channel " + recipient);
+			sendResponse(clientSocket, ":irc 404 " + owner + " " + recipient + " :You are not in the channel");
 			return false;
 		}
 		std::set<int> usersId = channels[channelPos].getUsers();
@@ -146,14 +145,14 @@ bool Server::handlePrivMsgCommand(int clientSocket, const std::string &owner, co
 				return true;
 			}
 		}
+        sendResponse(clientSocket, ":irc 401 " + owner + " " + recipient + " :No such user");
+
 	}
-    sendResponse(clientSocket, ":irc ERROR Recipient not found.");
     return false;
 }
 
 bool Server::handlePingCommand(int clientSocket, const std::string& server) {
 	std::string pongResponse;
-	(void)server;
 	sendResponse(clientSocket, "PONG " + server);
     return true;
 }
@@ -191,15 +190,15 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
         for (; channelIt != channels.end(); ++channelIt) {
             if (channelIt->getName() == tmpChalName) {
                 if (channelIt->getInviteOnly() && !channelIt->isUserInvited(clientSocket)) {
-                    sendResponse(clientSocket, ":irc ERROR " + tmpChalName + " is invite-only.");
+                    sendResponse(clientSocket, ":irc 473 " + params[0] + " " + tmpChalName + " :(+i) is invite-only.");
 	                break;
                 }
-				if(channelIt->isKeySet() && (channelsParam.size() <= i || !channelIt->isCorrectKey(channelsParam[i]))) {
-					sendResponse(clientSocket, ":irc ERROR the password enter is not good");
+				if (channelIt->isKeySet() && (channelsParam.size() <= i || !channelIt->isCorrectKey(channelsParam[i]))) {
+					sendResponse(clientSocket, ":irc 475 " + params[0] + " " + tmpChalName + " :(+k) the password enter is not good");
 					break;
 				}
 				if (channelIt->isUserLimitReached()) {
-					sendResponse(clientSocket, ":irc ERROR the channel as reached is max user value");
+					sendResponse(clientSocket, ":irc 471 " + params[0] + " " + tmpChalName + " :(+l) the channel as reached is max user value");
 					break;
 				}
 				if (!channelIt->addUser(clientSocket)) {
@@ -226,7 +225,10 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
 bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std::string& params) {
 	std::vector<std::string> allParams = splitString(params, ' ');
 	if (allParams.size() < 2) {
-		sendResponse(clientSocket, ":irc ERROR invalide number of parameters");
+        if (!allParams.empty())
+		    sendResponse(clientSocket, ":irc 472 " + nickName + " " + allParams[0] + " :invalide number of parameters");
+        else
+            sendResponse(clientSocket, ":irc ERROR invalide number of parameters");
 		return false;
 	}
 	const std::string channelName = allParams[0];
@@ -237,11 +239,15 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 	}
 	int channelId = findChannel(channels, channelName);
 	if (channelId == -1) {
-		sendResponse(clientSocket, ":irc ERROR Channel does not exist.");
+		sendResponse(clientSocket, ":irc 403 " + nickName + " " + channelName + " :Channel does not exist.");
 		return false;
 	}
+    if (!channels[channelId].isUserInChannel(clientSocket)) {
+        sendResponse(clientSocket, ":irc 442 " + nickName + " " + channelName + " :you are not in the channel");
+        return false;
+    }
 	if (!channels[channelId].isOperator(clientSocket)) {
-		sendResponse(clientSocket, ":irc ERROR you are not a operator in the channel " + channelName);
+		sendResponse(clientSocket, ":irc 482 " + nickName + " " + channelName + " :you are not a operator in the channel " + channelName);
 		return false;
 	}
 	bool settingMode = true;
@@ -283,9 +289,9 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 				}
 				break;
 			case 'o': {
-				int operatorId = getUserId(users, infoParams[posInfoParams]);
+				int operatorId = getSocketId(users, infoParams[posInfoParams]);
                 if (!channels[channelId].isUserInChannel(operatorId)) {
-                    sendResponse(clientSocket, ":irc ERROR the user is not in the channel " + channelName);
+                    sendResponse(clientSocket, ":irc 441 " + nickName + " " + infoParams[posInfoParams] + " :the user is not in the channel");
                     continue;
                 }
 				if (settingMode) {
@@ -318,7 +324,7 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 				break;
 			default:
 			{
-				sendResponse(clientSocket, ":irc ERROR Unknown mode.");
+				sendResponse(clientSocket, ":irc 472 " + nickName + " " + channelName + " :Unknown mode.");
 				return false;
 			}
 		}
@@ -332,20 +338,24 @@ bool Server::handleKickCommand(int clientSocket, const std::vector<std::string> 
 	std::string userKick = onlyPrintable(params[1].substr(i + 1, params[1].find(' ', i + 1) - i - 1));
 	int channelPos = findChannel(channels, channel);
 	if (channelPos == -1) {
-		sendResponse(clientSocket, ":irc ERROR The channel " + channel + " does not exist");
+        sendResponse(clientSocket, ":irc 403 " + params[0] + " " + channel + " :No such channel");
 		return false;
 	}
+    if (!channels[channelPos].isUserInChannel(clientSocket)) {
+        sendResponse(clientSocket, ":irc 442 " + params[0] + " " + channel + " :you are not in the channel");
+        return false;
+    }
 	if (!channels[channelPos].isOperator(clientSocket)) {
-		sendResponse(clientSocket, ":irc ERROR you are not a operator in the channel " + channel);
+        sendResponse(clientSocket, ":irc 482 " + params[0] + " " + channel + " :you are not a operator in the channel " + channel);
 		return false;
 	}
-	int userId = getUserId(users, userKick);
+	int userId = getSocketId(users, userKick);
 	if (userId == -1) {
-		sendResponse(clientSocket, ":irc ERROR The user " + userKick + " does not exist");
+        sendResponse(clientSocket, ":irc 401 " + params[0] + " " + userKick + " :No such channel");
 		return false;
 	}
 	if (!channels[channelPos].isUserInChannel(userId)) {
-		sendResponse(clientSocket, ":irc ERROR The user " + userKick + " does not exist in the channel " + channel);
+        sendResponse(clientSocket, ":irc 441 " + params[0] + " " + userKick + " :the user is not in the channel");
 		return false;
 	}
 	channels[channelPos].removeUser(userId);
@@ -364,23 +374,27 @@ bool Server::handleInviteCommand(int clientSocket, const std::vector<std::string
 	std::string channel = onlyPrintable(params[1].substr(i + 1, params[1].find(' ', i + 1) - i - 1));
 	int channelPos = findChannel(channels, channel);
 	if (channelPos == -1) {
-		sendResponse(clientSocket, ":irc ERROR The channel " + channel + " does not exist");
+        sendResponse(clientSocket, ":irc 403 " + params[0] + " " + channel + " :No such channel");
 		return false;
 	}
-	if (!channels[channelPos].isOperator(clientSocket) && channels[channelPos].getInviteOnly()) {
-		sendResponse(clientSocket, ":irc ERROR you are not a operator in the channel " + channel);
+    if (!channels[channelPos].isUserInChannel(clientSocket)) {
+        sendResponse(clientSocket, ":irc 442 " + params[0] + " " + channel + " :you are not in the channel");
+        return false;
+    }
+    if (!channels[channelPos].isOperator(clientSocket) && channels[channelPos].getInviteOnly()) {
+        sendResponse(clientSocket, ":irc 482 " + params[0] + " " + channel + " :you are not a operator in the channel");
 		return false;
 	}
-	int userId = getUserId(users, userInvite);
-	if (userId == -1) {
-		sendResponse(clientSocket, ":irc ERROR The user " + userInvite + " does not exist");
-		return false;
-	}
+    int userId = getSocketId(users, userInvite);
+    if (userId == -1) {
+        sendResponse(clientSocket, ":irc 401 " + params[0] + " " + userInvite + " :No such channel");
+        return false;
+    }
 	if (channels[channelPos].isUserInvited(userId)) {
 		sendResponse(clientSocket, ":irc ERROR The user " + userInvite + " is already invited");
 		return false;
 	}
-	channels[channelPos].addInvitedUser(userId);
+   channels[channelPos].addInvitedUser(userId);
 	sendResponse(userId, ":" + params[0] + " " + params[1]);
 	return true;
 }
@@ -396,11 +410,15 @@ bool Server::handleTopicCommand(int clientSocket, const std::vector<std::string>
 	}
 	int channelPos = findChannel(channels, channel);
 	if (channelPos == -1) {
-		sendResponse(clientSocket, ":irc ERROR The channel " + channel + " does not exist");
+        sendResponse(clientSocket, ":irc 403 " + params[0] + " " + channel + " :No such channel");
 		return false;
 	}
+    if (!channels[channelPos].isUserInChannel(clientSocket)) {
+        sendResponse(clientSocket, ":irc 442 " + params[0] + " " + channel + " :you are not in the channel");
+        return false;
+    }
 	if (channels[channelPos].getTopicSecured() && !channels[channelPos].isOperator(clientSocket)) {
-		sendResponse(clientSocket, ":irc ERROR you are not a operator in the channel " + channel);
+        sendResponse(clientSocket, ":irc 482 " + params[0] + " " + channel + " :you are not a operator in the channel");
 		return false;
 	}
 	if (topic.empty()) {
@@ -419,5 +437,3 @@ bool Server::handleTopicCommand(int clientSocket, const std::vector<std::string>
 	}
 	return true;
 }
-
-

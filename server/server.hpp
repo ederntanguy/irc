@@ -10,12 +10,16 @@
 #include "../channel/channel.hpp"
 #include <stdlib.h>
 
-#define PORT 6697
 #define NUMBER_CLIENT_MAX 20
+int findChannel(std::vector<Channel> channels, std::string name);
+int getSocketId(std::vector<User> users, std::string name);
+std::string onlyPrintable(const std::string &string);
+std::vector<std::string> splitString(std::string &value, char sep);
+int getUserIdBySocketId(std::vector<User> users, int id);
 
 class Server {
 public:
-    Server();
+    Server(long int port, const std::string &password);
     ~Server();
 
     void run();
@@ -27,6 +31,9 @@ private:
     struct sockaddr_in address;
     socklen_t addrlen;
     int numberUsersAdd;
+    std::string password;
+
+    bool checkPassword(std::string value);
 
     bool acceptNewConnection(std::vector<struct pollfd> *fds);
     bool processIncomingData(const std::string& buffer, std::vector<struct pollfd> *fds, int i);

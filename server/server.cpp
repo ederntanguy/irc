@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-Server::Server() {
+Server::Server(long int port, const std::string &password) : address(), password(password) {
 	int opt = 1;
     numberUsersAdd = 0;
 	addrlen = sizeof(address);
@@ -26,7 +26,7 @@ Server::Server() {
 
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons(PORT);
+	address.sin_port = htons(port);
 
 	if (bind(listenSocket, (struct sockaddr*)&address,
 	         sizeof(address))
@@ -76,14 +76,20 @@ void Server::run() {
                         std::string test(buffer);
 						std::vector<std::string> allLine = multipleLine(test);
 	                    for (size_t j = 0; j < allLine.size(); ++j) {
-		                    processIncomingData(allLine[j], &fds, i);
-		                    std::cout << "/" << allLine[j] << "/" << std::endl;
+		                    if (!processIncomingData(allLine[j], &fds, i))
+                                return;
+                            if (users[i].nickname != "" && users[i].username != "" && users[i].isConnected == -1) {
+                                sendResponse(users[i].clientSocket, ":irc 464 " + users[i].nickname + " :Password incorrect");
+                                closeConnection(&fds, i);
+
+                            }
+                            std::cout << "/" << allLine[j] << "/" << std::endl;
 	                    }
                         for (int i = 0; i < 1000; ++i) {
                             buffer[i] = 0;
                         }
                     }
-                    else if (users[i].isInit == 0 && users[i].nickname != "" && users[i].username != "") {
+                    else if (users[i].isInit == 0 && users[i].nickname != "" && users[i].username != "" && users[i].isConnected == 1) {
 						std::string welcomeMsg = ":irc 001 " + users[i].nickname + " :Welcome to the IRC Network, " + users[i].nickname + "\r\n";
                         send(fds[i].fd, welcomeMsg.c_str(), welcomeMsg.size(), MSG_CONFIRM);
                         users[i].isInit = 1;
@@ -122,22 +128,33 @@ void Server::closeConnection(std::vector<struct pollfd> *fds, int i) {
 }
 
 bool Server::processIncomingData(const std::string& buffer, std::vector<struct pollfd> *fds, int i) {
-	if (users[i].setUserName(buffer))
+    if (users[i].isConnected == 0 && !buffer.find("PASS")) {
+        if (checkPassword(onlyPrintable(buffer.substr(buffer.find(' ') + 1, buffer.size())))) {
+            users[i].isConnected = 1;
+            return true;
+        } else {
+            std::cout << "ici :" << buffer << " | " <<  buffer.substr(buffer.find(' ') + 1, buffer.size()) << std::endl;
+            users[i].isConnected = -1;
+            return true;
+        }
+    }
+	else if (users[i].setUserName(buffer))
 		return true;
 	else if (users[i].setNickName(buffer))
 		return true;
-	else if (users[i].isInit == 0 && users[i].nickname != "" && users[i].username != "") {
-
-	}
 	if (buffer.find("QUIT") == 0) {
 		closeConnection(fds, i);
 		return true;
 	}
-	else if (buffer.find("CAP LS 302") == 0)
+	else if (onlyPrintable(buffer) == "CAP LS 302")
 		return true;
 	std::vector<std::string> params;
 	params.push_back(users[i].nickname);
 	params.push_back(buffer);
 	handleCommand(users[i].clientSocket, buffer.substr(0, buffer.find(' ')), params);
 	return true;
+}
+
+bool Server::checkPassword(std::string value) {
+    return value == this->password;
 }

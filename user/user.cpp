@@ -6,6 +6,7 @@ User::User() {
     this->isInit = 0;
     this->nickname = "";
     this->username = "";
+    this->isConnected = 0;
 }
 
 User::~User() {}
