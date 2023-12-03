@@ -194,6 +194,10 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
 	                break;
                 }
 				if (channelIt->isKeySet() && (channelsParam.size() <= i || !channelIt->isCorrectKey(channelsParam[i]))) {
+                    if (channelsParam.size() <= i) {
+                        sendResponse(clientSocket, ":irc 461 " + params[0] + " JOIN :Not enough parameters");
+                        break;
+                    }
 					sendResponse(clientSocket, ":irc 475 " + params[0] + " " + tmpChalName + " :(+k) the password enter is not good");
 					break;
 				}
@@ -252,7 +256,7 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 	}
 	bool settingMode = true;
 	std::set<int> usersChannel = channels[channelId].getUsers();
-	int posInfoParams = 0;
+	size_t posInfoParams = 0;
 	for (std::string::const_iterator it = modeParams.begin(); it != modeParams.end(); ++it) {
 		char mode = *it;
 		switch (mode) {
@@ -276,6 +280,10 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 				break;
 			case 'k':
 				if (settingMode) {
+                    if (infoParams.size() <= posInfoParams) {
+                        sendResponse(clientSocket, ":irc 461 " + nickName + " " + mode + " :Not enough parameters");
+                        continue;
+                    }
 					channels[channelId].setChannelKey(infoParams[posInfoParams]);
 					for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
 						sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + (settingMode == true ? '+' : '-') + mode + " " + infoParams[posInfoParams]);
@@ -289,7 +297,15 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 				}
 				break;
 			case 'o': {
+                if (infoParams.size() <= posInfoParams) {
+                    sendResponse(clientSocket, ":irc 461 " + nickName + " " + mode + " :Not enough parameters");
+                    continue;
+                }
 				int operatorId = getSocketId(users, infoParams[posInfoParams]);
+                if (operatorId == -1) {
+                    sendResponse(clientSocket, ":irc 401 " + nickName + " " + infoParams[posInfoParams] + " :No such user");
+                    continue;
+                }
                 if (!channels[channelId].isUserInChannel(operatorId)) {
                     sendResponse(clientSocket, ":irc 441 " + nickName + " " + infoParams[posInfoParams] + " :the user is not in the channel");
                     continue;
@@ -307,19 +323,23 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
 				break;
 			case 'l':
 			{
-				int userLimit = atoi(infoParams[posInfoParams].c_str());
 				if (settingMode) {
+                    if (infoParams.size() <= posInfoParams) {
+                        sendResponse(clientSocket, ":irc 461 " + nickName + " " + mode + " :Not enough parameters");
+                        continue;
+                    }
+                    int userLimit = atoi(infoParams[posInfoParams].c_str());
 					channels[channelId].setUserLimit(userLimit);
 					for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
-						sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + (settingMode == true ? '+' : '-') + mode + " " + infoParams[posInfoParams]);
+						sendResponse((*it), ":" + nickName + " MODE " + channelName + " +" + mode + " " + infoParams[posInfoParams]);
 					}
+                    posInfoParams++;
 				} else {
 					channels[channelId].removeUserLimit();
 					for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
-						sendResponse((*it), ":" + nickName + " MODE " + channelName + " " + (settingMode == true ? '+' : '-') + mode);
+						sendResponse((*it), ":" + nickName + " MODE " + channelName + " -" + mode);
 					}
 				}
-				posInfoParams++;
 			}
 				break;
 			default:
