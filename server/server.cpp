@@ -77,7 +77,7 @@ void Server::run() {
 						std::vector<std::string> allLine = multipleLine(test);
 	                    for (size_t j = 0; j < allLine.size(); ++j) {
 		                    if (!processIncomingData(allLine[j], &fds, i))
-                                return;
+                                continue;
                             if (users[i].nickname != "" && users[i].username != "" && (users[i].isConnected == -1 ||
                                     isConflictNick(users, users[i].nickname))) {
                                 if (isConflictNick(users, users[i].nickname)) {
@@ -149,7 +149,7 @@ bool Server::processIncomingData(const std::string& buffer, std::vector<struct p
 		return true;
 	if (buffer.find("QUIT") == 0) {
 		closeConnection(fds, i);
-		return true;
+		return false;
 	}
 	else if (onlyPrintable(buffer) == "CAP LS 302")
 		return true;
