@@ -1,3 +1,6 @@
+#ifndef IRC_CHANNEL_HPP
+#define IRC_CHANNEL_HPP
+
 #include <string>
 #include <set>
 
@@ -104,3 +107,4 @@ private:
     bool        isTopicSecured;
     int         userNumberLimit; //-1 pour aucune limite
 };
+#endif

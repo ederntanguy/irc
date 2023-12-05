@@ -1,3 +1,6 @@
+#ifndef IRC_SERVER_HPP
+#define IRC_SERVER_HPP
+
 #include <map>
 #include <string>
 #include <vector>
@@ -10,6 +13,7 @@
 #include "../channel/channel.hpp"
 #include <stdlib.h>
 
+
 #define NUMBER_CLIENT_MAX 20
 int findChannel(std::vector<Channel> channels, std::string name);
 int getSocketId(std::vector<User> users, std::string name);
@@ -17,7 +21,6 @@ std::string onlyPrintable(const std::string &string);
 std::vector<std::string> splitString(std::string value, char sep);
 int getUserIdBySocketId(std::vector<User> users, int id);
 std::string multipleSpacesToOne(std::string value);
-void toFree(int SetOrFree, const std::vector<User> &users, const std::vector<struct pollfd> &fds);
 
 class Server {
 public:
@@ -57,3 +60,5 @@ private:
 	bool handleListCommand(int clientSocket);
 	bool handleModeCommand(int clientSocket,const std::string &nickName, std::string& params);
 };
+
+#endif

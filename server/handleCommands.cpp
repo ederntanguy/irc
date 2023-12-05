@@ -175,7 +175,6 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
 	std::string tmpString = infos.substr(0, infos.find(' '));
 	std::vector<std::string> channelsName = splitString(tmpString, ',');
 	std::vector<std::string> channelsParam;
-	std::cout << "test: " << infos << std::endl;
 	if (infos.find(' ') != std::string::npos) {
 		tmpString = infos.substr(infos.find(' ') + 1, infos.size());
 		channelsParam = splitString(tmpString, ',');

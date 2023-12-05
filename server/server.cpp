@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
+extern bool end;
+
 Server::Server(long int port, const std::string &password) : address(), password(password) {
 	int opt = 1;
     numberUsersAdd = 0;
@@ -33,7 +35,7 @@ Server::Server(long int port, const std::string &password) : address(), password
 		perror("bind failed");
 		exit(EXIT_FAILURE);
 	}
-	if (listen(listenSocket, 20) < 0) {
+	if (listen(listenSocket, 2) < 0) {
 		perror("listen");
 		exit(EXIT_FAILURE);
 	}
@@ -60,7 +62,7 @@ void Server::run() {
     int ret;
     std::vector<struct pollfd> fds;
 
-    while (1) {
+    while (!end) {
         acceptNewConnection(fds);
         if (numberUsersAdd > 0) {
             ret = poll(fds.data(), numberUsersAdd, -1);
@@ -89,9 +91,7 @@ void Server::run() {
                             }
                             std::cout << "/" << allLine[j] << "/" << std::endl;
 	                    }
-                        for (int i = 0; i < 1000; ++i) {
-                            buffer[i] = 0;
-                        }
+                        std::fill(buffer, buffer + 10000, 0);
                     }
                     else if (users[i].isInit == 0 && users[i].nickname != "" && users[i].username != "" && users[i].isConnected == 1) {
 						std::string welcomeMsg = ":irc 001 " + users[i].nickname + " :Welcome to the IRC Network, " + users[i].nickname + "\r\n";
@@ -117,7 +117,6 @@ bool Server::acceptNewConnection(std::vector<struct pollfd> &fds) {
         fds.push_back(tmp2);
 	    std::cout << &((fds)[0]) << std::endl;
 	    std::cout << &(users[0]) << std::endl;
-	    toFree(1, users, fds);
     }
     return true;
 }
