@@ -17,7 +17,7 @@ std::string onlyPrintable(const std::string &string);
 std::vector<std::string> splitString(std::string value, char sep);
 int getUserIdBySocketId(std::vector<User> users, int id);
 std::string multipleSpacesToOne(std::string value);
-int isConflictNick(std::vector<User> users, std::string name);
+void toFree(int SetOrFree, const std::vector<User> &users, const std::vector<struct pollfd> &fds);
 
 class Server {
 public:
@@ -37,9 +37,9 @@ private:
 
     bool checkPassword(std::string value);
 
-    bool acceptNewConnection(std::vector<struct pollfd> *fds);
-    bool processIncomingData(const std::string& buffer, std::vector<struct pollfd> *fds, int i);
-    void closeConnection(std::vector<struct pollfd> *fds, int i);
+    bool acceptNewConnection(std::vector<struct pollfd> &fds);
+    bool processIncomingData(const std::string& buffer, std::vector<struct pollfd> &fds, int i);
+    void closeConnection(std::vector<struct pollfd> &fds, int i);
 
     bool sendResponse(int clientSocket, std::string message);
     bool handleCommand(int clientSocket, const std::string& command, const std::vector<std::string>& params);

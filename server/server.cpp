@@ -11,7 +11,6 @@ Server::Server(long int port, const std::string &password) : address(), password
 	int opt = 1;
     numberUsersAdd = 0;
 	addrlen = sizeof(address);
-
 	if ((listenSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket failed");
 		exit(EXIT_FAILURE);
@@ -62,7 +61,7 @@ void Server::run() {
     std::vector<struct pollfd> fds;
 
     while (1) {
-        acceptNewConnection(&fds);
+        acceptNewConnection(fds);
         if (numberUsersAdd > 0) {
             ret = poll(fds.data(), numberUsersAdd, -1);
             if (ret > 0) {
@@ -76,17 +75,17 @@ void Server::run() {
                         std::string test(buffer);
 						std::vector<std::string> allLine = multipleLine(test);
 	                    for (size_t j = 0; j < allLine.size(); ++j) {
-		                    if (!processIncomingData(allLine[j], &fds, i))
+		                    if (!processIncomingData(allLine[j], fds, i))
                                 continue;
                             if (users[i].nickname != "" && users[i].username != "" && (users[i].isConnected == -1 ||
-                                    isConflictNick(users, users[i].nickname))) {
+                                    users[i].isNickChecked == -1)) {
                                 if (isConflictNick(users, users[i].nickname)) {
                                     sendResponse(users[i].clientSocket, ":irc 436 " + users[i].nickname + " :Nickname collision KILL");
-                                    closeConnection(&fds, i);
+                                    closeConnection(fds, i);
                                     continue;
                                 }
                                 sendResponse(users[i].clientSocket, ":irc 464 " + users[i].nickname + " :Password incorrect");
-                                closeConnection(&fds, i);
+                                closeConnection(fds, i);
                             }
                             std::cout << "/" << allLine[j] << "/" << std::endl;
 	                    }
@@ -105,34 +104,36 @@ void Server::run() {
 	}
 }
 
-bool Server::acceptNewConnection(std::vector<struct pollfd> *fds) {
+bool Server::acceptNewConnection(std::vector<struct pollfd> &fds) {
     int tmp = accept(listenSocket, (struct sockaddr*)&address, &addrlen);
     if (tmp > 0) {
         User newOne;
-        newOne.clientSocket = tmp;
+	    newOne.clientSocket = tmp;
         users.push_back(newOne);
         numberUsersAdd++;
         struct pollfd tmp2;
         tmp2.fd = tmp;
         tmp2.events = POLLIN | POLLOUT;
-        fds->push_back(tmp2);
+        fds.push_back(tmp2);
+	    std::cout << &((fds)[0]) << std::endl;
+	    std::cout << &(users[0]) << std::endl;
+	    toFree(1, users, fds);
     }
-
     return true;
 }
 
-void Server::closeConnection(std::vector<struct pollfd> *fds, int i) {
-    std::vector<struct pollfd>::iterator itF = fds->begin();
+void Server::closeConnection(std::vector<struct pollfd> &fds, int i) {
+    std::vector<struct pollfd>::iterator itF = fds.begin();
     std::vector<User>::iterator itU = users.begin();
     std::advance(itF, i);
     std::advance(itU, i);
-    close((*fds)[i].fd);
+    close((fds)[i].fd);
     users.erase(itU);
-    fds->erase(itF);
+    fds.erase(itF);
     numberUsersAdd--;
 }
 
-bool Server::processIncomingData(const std::string& buffer, std::vector<struct pollfd> *fds, int i) {
+bool Server::processIncomingData(const std::string& buffer, std::vector<struct pollfd> &fds, int i) {
     if (users[i].isConnected == 0 && !buffer.find("PASS")) {
         if (checkPassword(onlyPrintable(buffer.substr(buffer.find(' ') + 1, buffer.size())))) {
             users[i].isConnected = 1;
@@ -145,7 +146,7 @@ bool Server::processIncomingData(const std::string& buffer, std::vector<struct p
     }
 	else if (users[i].setUserName(buffer))
 		return true;
-	else if (users[i].setNickName(buffer))
+	else if (users[i].setNickName(buffer,users))
 		return true;
 	if (buffer.find("QUIT") == 0) {
 		closeConnection(fds, i);

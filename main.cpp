@@ -1,14 +1,30 @@
 #include <stdlib.h>
 #include <iostream>
-#include <stdio.h>
 #include <signal.h>
-
+#include <poll.h>
 #include "server/server.hpp"
 
+
+void toFree(int SetOrFree, const std::vector<User> &users, const std::vector<struct pollfd> &fds) {
+	static std::vector<User> tmpUsers;
+	static std::vector<struct pollfd> tmpFds;
+	if (SetOrFree == 1) {
+		tmpUsers = users;
+		tmpFds = fds;
+	} else {
+		tmpUsers.clear();
+		tmpFds.clear();
+		std::cout << tmpUsers.size() << " " << tmpFds.size() << std::endl;
+	}
+}
+
+
 void    exitFunction(int sig){
-    if (sig == SIGINT)
-        std::cerr << "Thanks for using IRC SERVER ! See you next time !" << std::endl;
-    return ;
+    if (sig == SIGINT) {
+	    std::cerr << "Thanks for using IRC SERVER ! See you next time !" << std::endl;
+	    toFree(0, std::vector<User>(), std::vector<struct pollfd>());
+	    exit(0);
+	}
 }
 int main(int argc, char **argv) {
     signal(SIGINT, exitFunction);
