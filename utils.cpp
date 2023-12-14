@@ -15,12 +15,19 @@ int findChannel(std::vector<Channel> channels, std::string name) {
 }
 
 int getSocketId(std::vector<User> users, std::string name) {
-    std::cout << "/" << name << "/" << std::endl;
     for (size_t i = 0; i < users.size(); ++i) {
         if (users[i].nickname == name)
             return users[i].clientSocket;
     }
     return -1;
+}
+
+std::string getNickNameById(std::vector<User> users, int id) {
+    for (size_t i = 0; i < users.size(); ++i) {
+        if (users[i].clientSocket == id)
+            return users[i].nickname;
+    }
+    return "";
 }
 
 int getUserIdBySocketId(std::vector<User> users, int id) {
@@ -41,7 +48,7 @@ std::string onlyPrintable(const std::string &string) {
 	return ret;
 }
 
-std::vector<std::string> splitString(std::string value, char sep) {
+std::vector<std::string> splitString(std::string value, const char &sep) {
 	std::vector<std::string> retValue;
 	value = onlyPrintable(value);
 	while (value.find(sep) != std::string::npos)
@@ -53,7 +60,7 @@ std::vector<std::string> splitString(std::string value, char sep) {
 	return retValue;
 }
 
-std::string multipleSpacesToOne(std::string value) {
+std::string multipleSpacesToOne(const std::string &value) {
     std::string newValue;
     for (size_t i = 0; i < value.size(); ++i) {
         if (value[i] == ' ') {
@@ -69,10 +76,35 @@ std::string multipleSpacesToOne(std::string value) {
     return newValue;
 }
 
-int isConflictNick(std::vector<User> users, std::string name) {
+int isConflictNick(const std::vector<User> &users, const std::string &name) {
     for (size_t i = 0; i < users.size() - 1; ++i) {
         if (users[i].nickname == name)
             return -1;
     }
     return 0;
+}
+
+void sendInfoWhenJoin(const std::string &nickName, const std::vector<User> users, const Channel &channel) {
+    if (channel.getTopic().empty()) {
+        std::string topicmsg = ":irc 331 " + nickName + " " + channel.getName() + " :topic not set\r\n";
+        send(getSocketId(users, nickName), topicmsg.c_str(), topicmsg.size(), 0);
+    } else {
+        std::string topicmsg = ":irc 332 " + nickName + " " + channel.getName() + " :" + channel.getTopic() + "\r\n";
+        send(getSocketId(users, nickName), topicmsg.c_str(), topicmsg.size(), 0);
+    }
+    std::string names = ":irc 353 " + nickName + " = " + channel.getName() + " :";
+    std::set<int>::iterator ite = channel.getUsers().end();
+    for (std::set<int>::iterator it = channel.getUsers().begin(); it != ite; ++it) {
+        if (it == channel.getUsers().begin()) {
+            names += getNickNameById(users, *it);
+        } else {
+            names += " ";
+            names += getNickNameById(users, *it);
+        }
+    }
+    std::cout << names << std::endl;
+    names += "\r\n";
+    send(getSocketId(users, nickName), names.c_str(), names.size(), 0);
+    std::string endNames = ":irc 366 " + nickName + " " + channel.getName() + " :End of /NAMES list\r\n";
+    send(getSocketId(users, nickName), endNames.c_str(), endNames.size(), 0);
 }

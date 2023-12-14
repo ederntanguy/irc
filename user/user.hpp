@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 class User;
-int isConflictNick(std::vector<User> users, std::string name);
+int isConflictNick(const std::vector<User> &users, const std::string &name);
 
 class User {
 public:

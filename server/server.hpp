@@ -18,9 +18,10 @@
 int findChannel(std::vector<Channel> channels, std::string name);
 int getSocketId(std::vector<User> users, std::string name);
 std::string onlyPrintable(const std::string &string);
-std::vector<std::string> splitString(std::string value, char sep);
+std::vector<std::string> splitString(std::string value, const char &sep);
 int getUserIdBySocketId(std::vector<User> users, int id);
-std::string multipleSpacesToOne(std::string value);
+std::string multipleSpacesToOne(const std::string &value);
+void sendInfoWhenJoin(const std::string &nickName, const std::vector<User> users, const Channel &channel);
 
 class Server {
 public:

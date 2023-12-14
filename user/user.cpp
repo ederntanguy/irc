@@ -10,9 +10,7 @@ User::User() {
     this->isConnected = 0;
 }
 
-User::~User() {
-	std::cout << "proute" << std::endl;
-}
+User::~User() {}
 
 bool User::setNickName(std::string value, std::vector<User> users) {
     if (value.find("NICK") != std::string::npos && nickname == "") {
