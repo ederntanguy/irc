@@ -89,7 +89,6 @@ void Server::run() {
                                 sendResponse(users[i].clientSocket, ":irc 464 " + users[i].nickname + " :Password incorrect");
                                 closeConnection(fds, i);
                             }
-                            std::cout << "/" << allLine[j] << "/" << std::endl;
 	                    }
                         std::fill(buffer, buffer + 10000, 0);
                     }
@@ -115,8 +114,6 @@ bool Server::acceptNewConnection(std::vector<struct pollfd> &fds) {
         tmp2.fd = tmp;
         tmp2.events = POLLIN | POLLOUT;
         fds.push_back(tmp2);
-	    std::cout << &((fds)[0]) << std::endl;
-	    std::cout << &(users[0]) << std::endl;
     }
     return true;
 }
@@ -138,7 +135,6 @@ bool Server::processIncomingData(const std::string& buffer, std::vector<struct p
             users[i].isConnected = 1;
             return true;
         } else {
-            std::cout << "ici :" << buffer << " | " <<  buffer.substr(buffer.find(' ') + 1, buffer.size()) << std::endl;
             users[i].isConnected = -1;
             return true;
         }

@@ -106,7 +106,6 @@ void sendInfoWhenJoin(const std::string &nickName, const std::vector<User> users
             names += getNickNameById(users, *it);
         }
     }
-    std::cout << names << std::endl;
     names += "\r\n";
     send(getSocketId(users, nickName), names.c_str(), names.size(), 0);
     std::string endNames = ":irc 366 " + nickName + " " + channel.getName() + " :End of /NAMES list\r\n";

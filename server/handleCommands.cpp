@@ -42,7 +42,7 @@ bool Server::handleCommand(int clientSocket, const std::string& command, const s
     } else if (command == "TOPIC") {
 	    return handleTopicCommand(clientSocket, params);
     }
-    std::cerr << "Unknown command or insufficient parameters." << std::endl;
+//    std::cerr << "Unknown command or insufficient parameters." << std::endl;
     return false;
 }
 
@@ -195,7 +195,7 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
                 ss << channels[channelId].getUserLimit();
                 msg += ss.str();
             }
-            std::cout << msg << std::endl;
+//            std::cout << msg << std::endl;
             sendResponse(clientSocket, msg);
         }
         else
