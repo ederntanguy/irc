@@ -96,9 +96,13 @@ void sendInfoWhenJoin(const std::string &nickName, const std::vector<User> users
     std::set<int>::iterator ite = channel.getUsers().end();
     for (std::set<int>::iterator it = channel.getUsers().begin(); it != ite; ++it) {
         if (it == channel.getUsers().begin()) {
+            if (channel.isOperator(*it))
+                names += '@';
             names += getNickNameById(users, *it);
         } else {
-            names += " ";
+            names += ' ';
+            if (channel.isOperator(*it))
+                names += '@';
             names += getNickNameById(users, *it);
         }
     }

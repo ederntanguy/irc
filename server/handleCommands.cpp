@@ -1,6 +1,6 @@
 #include "server.hpp"
 #include <algorithm>
-#include <stdlib.h>
+#include <sstream>
 
 bool Server::sendResponse(int clientSocket, std::string msg) {
 	msg.push_back('\r');
@@ -154,7 +154,10 @@ bool Server::handleJoinCommand(int clientSocket, const std::vector<std::string> 
 					sendResponse(clientSocket, ":irc ERROR can't add user to the channel");
 					break;
 				}
-                sendResponse(clientSocket, ":" + params[0] + " JOIN :" + tmpChalName);
+                std::set<int>::iterator itUserEnd = (*channelIt).getUsers().end();
+                for (std::set<int>::iterator itUser = (*channelIt).getUsers().begin(); itUser != itUserEnd; ++itUser) {
+                    sendResponse(*itUser, ":" + params[0] + " JOIN :" + tmpChalName);
+                }
                 sendInfoWhenJoin(params[0], users, *channelIt);
 	            break;
             }
@@ -186,8 +189,12 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
                 msg += 't';
             if (channels[channelId].isKeySet())
                 msg += 'k';
-            if (channels[channelId].getUserLimit() > 0)
-                msg += 'l';
+            if (channels[channelId].getUserLimit() >= 0) {
+                msg += "l ";
+                std::stringstream ss;
+                ss << channels[channelId].getUserLimit();
+                msg += ss.str();
+            }
             std::cout << msg << std::endl;
             sendResponse(clientSocket, msg);
         }
@@ -289,6 +296,11 @@ bool Server::handleModeCommand(int clientSocket,const std::string &nickName, std
                         continue;
                     }
                     int userLimit = atoi(infoParams[posInfoParams].c_str());
+                    if (userLimit < 0) {
+                        posInfoParams++;
+                        sendResponse(clientSocket, ":irc 501 " + nickName + " :Unknown " + mode + " flag");
+                        continue;
+                    }
 					channels[channelId].setUserLimit(userLimit);
 					for (std::set<int>::iterator it = usersChannel.begin(); it != usersChannel.end(); ++it) {
 						sendResponse((*it), ":" + nickName + " MODE " + channelName + " +" + mode + " " + infoParams[posInfoParams]);
